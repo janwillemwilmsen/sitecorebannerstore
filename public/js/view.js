@@ -6,7 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
         baseFolders: new Set(),
         subFolder: '',
         mediaPrefix: 'https://www.essent.nl/-/media/',
-        data: []
+        data: [],
+        viewMode: 'data',
+        brandStyle: 'essent'
     };
 
     // DOM Elements
@@ -20,7 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
         subFolder: document.getElementById('subFolderSelect'),
         reset: document.getElementById('resetFilters'),
         mediaHost: document.getElementById('mediaHostInput'),
-        loading: document.getElementById('loadingState')
+        loading: document.getElementById('loadingState'),
+        emulatorGrid: document.getElementById('emulatorGrid'),
+        modeDataBtn: document.getElementById('modeDataBtn'),
+        modeEmulatorBtn: document.getElementById('modeEmulatorBtn'),
+        brandToggleContainer: document.getElementById('brandToggleContainer'),
+        brandEssentBtn: document.getElementById('brandEssentBtn'),
+        brandEdBtn: document.getElementById('brandEdBtn')
     };
 
     // Initialize App
@@ -66,6 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.mediaHost.addEventListener('input', (e) => { state.mediaPrefix = e.target.value; render(); });
         DOM.reset.addEventListener('click', resetFilters);
 
+        DOM.modeDataBtn.addEventListener('click', () => { state.viewMode = 'data'; updateModeStyles(); render(); });
+        DOM.modeEmulatorBtn.addEventListener('click', () => { state.viewMode = 'emulator'; updateModeStyles(); render(); });
+        DOM.brandEssentBtn.addEventListener('click', () => { state.brandStyle = 'essent'; updateModeStyles(); render(); });
+        DOM.brandEdBtn.addEventListener('click', () => { state.brandStyle = 'energiedirect'; updateModeStyles(); render(); });
+
+        updateModeStyles();
         render();
     }
 
@@ -76,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return dtStr;
     }
 
-    window.toggleBaseFolder = function(folder) {
+    window.toggleBaseFolder = function (folder) {
         if (state.baseFolders.has(folder)) state.baseFolders.delete(folder);
         else state.baseFolders.add(folder);
         state.subFolder = '';
@@ -105,8 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         DOM.languages.innerHTML = html;
     }
-    
-    window.setLang = function(l) {
+
+    window.setLang = function (l) {
         state.language = l;
         render();
     }
@@ -162,14 +176,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (results.length === 0) {
             DOM.grid.innerHTML = '';
+            DOM.emulatorGrid.innerHTML = '';
             DOM.empty.classList.remove('hidden');
             return;
         } else {
             DOM.empty.classList.add('hidden');
         }
 
-        const renderLimit = 500;
+        const renderLimit = state.viewMode === 'emulator' ? 50 : 500;
         const toRender = results.slice(0, renderLimit);
+
+        if (state.viewMode === 'emulator') {
+            renderEmulator(results, toRender, renderLimit);
+            return;
+        }
+
         const fragment = document.createDocumentFragment();
 
         toRender.forEach(b => {
@@ -210,14 +231,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 <div class="mb-3 flex flex-col gap-1.5">
                     ${(() => {
-                        const mainCtas = b.CTAs ? b.CTAs.filter(c => !c.Key.includes('app')) : [];
-                        return mainCtas.length > 0 ? mainCtas.map(cta => `
+                    const mainCtas = b.CTAs ? b.CTAs.filter(c => !c.Key.includes('app')) : [];
+                    return mainCtas.length > 0 ? mainCtas.map(cta => `
                             <div class="bg-indigo-50 rounded p-1.5 flex flex-col border border-indigo-100">
                                 <span class="text-[11px] font-medium text-slate-800 truncate" title="${cta.Text || ''}">${cta.Text || 'No Link Text'}</span>
                                 <span class="text-[9px] text-indigo-600 truncate opacity-90 mt-0.5" title="${cta.Url || ''}">${cta.Url || 'No Target URL'}</span>
                             </div>
                         `).join('') : '<span class="text-[11px] font-medium text-slate-400 italic">No call-to-action</span>';
-                    })()}
+                })()}
                 </div>
 
                 ${(() => {
@@ -279,6 +300,181 @@ document.addEventListener('DOMContentLoaded', () => {
             notice.className = "col-span-full text-center py-4 text-sm text-slate-500";
             notice.textContent = `Showing 1-${renderLimit} out of ${results.length} results. Please narrow down via filters.`;
             DOM.grid.appendChild(notice);
+        }
+    }
+
+    function updateModeStyles() {
+        if (state.viewMode === 'data') {
+            DOM.modeDataBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md bg-white text-indigo-700 shadow-sm transition-all duration-200";
+            DOM.modeEmulatorBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200";
+            DOM.brandToggleContainer.classList.add('hidden');
+            DOM.grid.classList.remove('hidden');
+            DOM.emulatorGrid.classList.add('hidden');
+        } else {
+            DOM.modeEmulatorBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md bg-white text-indigo-700 shadow-sm transition-all duration-200";
+            DOM.modeDataBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200";
+            DOM.brandToggleContainer.classList.remove('hidden');
+            DOM.emulatorGrid.classList.remove('hidden');
+            DOM.grid.classList.add('hidden');
+        }
+
+        if (state.brandStyle === 'essent') {
+            DOM.brandEssentBtn.className = "px-3 py-1.5 text-xs font-bold rounded-md bg-[#E6006E] text-white shadow-sm ring-2 ring-white ring-offset-1 ring-offset-indigo-800 transition-all";
+            DOM.brandEdBtn.className = "px-3 py-1.5 text-xs font-bold rounded-md bg-transparent text-slate-300 hover:text-white hover:bg-indigo-600 transition-all";
+        } else {
+            DOM.brandEdBtn.className = "px-3 py-1.5 text-xs font-bold rounded-md bg-[#66BC29] text-white shadow-sm ring-2 ring-white ring-offset-1 ring-offset-indigo-800 transition-all";
+            DOM.brandEssentBtn.className = "px-3 py-1.5 text-xs font-bold rounded-md bg-transparent text-slate-300 hover:text-white hover:bg-indigo-600 transition-all";
+        }
+    }
+
+    function renderEmulator(results, toRender, max) {
+        DOM.emulatorGrid.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+
+        const getImgUrl = (img) => {
+            if (!img) return '';
+            return 'https://essentimages.janwillemwilmsen.workers.dev/?' + encodeURIComponent(state.mediaPrefix + img);
+        };
+
+        toRender.forEach((b, idx) => {
+            const hasApp = b.AppTitle || b.AppSubtitle || b.AppImage || (b.CTAs && b.CTAs.some(c => c.Key.includes('app')));
+            const mainCtas = b.CTAs ? b.CTAs.filter(c => !c.Key.includes('app')) : [];
+            const appCtas = b.CTAs ? b.CTAs.filter(c => c.Key.includes('app')) : [];
+            const primaryCta = mainCtas.length > 0 ? mainCtas[0] : null;
+            const primaryAppCta = appCtas.length > 0 ? appCtas[0] : null;
+
+            const ctaText = primaryCta ? primaryCta.Text || 'Meer weten' : 'Meer weten';
+            const appCtaText = primaryAppCta ? primaryAppCta.Text || 'Meer weten' : 'Meer weten';
+
+            const webImg = getImgUrl(b.HeroImage);
+            const appImg = getImgUrl(b.AppImage);
+
+            const isEssent = state.brandStyle === 'essent';
+
+            const colors = isEssent ? {
+                mainBg: '#E6006E',
+                ctaBg: '#1A66FF',
+                ctaText: 'text-white',
+                ctaBorder: 'border-transparent',
+                webCtaBg: '#FFFFFF',
+                webCtaText: 'text-[#1A66FF]',
+                appHeader: '#E6006E',
+                appHeaderStyle: 'clip-path: ellipse(150% 100% at 50% 0%);', // curve pointing outwards down
+                appTitleCol: 'text-white'
+            } : {
+                mainBg: '#66BC29',
+                ctaBg: '#FFC000',
+                ctaText: 'text-black',
+                ctaBorder: 'border-2 border-black',
+                webCtaBg: '#FFC000',
+                webCtaText: 'text-black',
+                appHeader: '#66BC29',
+                appHeaderStyle: 'border-bottom-left-radius: 50% 20px; border-bottom-right-radius: 50% 20px;', // curve pointing inwards up
+                appTitleCol: 'text-white'
+            };
+
+            const desktopHTML = `
+                <div class="rounded-xl overflow-hidden shadow-lg mx-auto flex items-center relative py-8 bg-right bg-no-repeat shrink-0" style="width: 800px; background-color: ${colors.mainBg}; ${webImg ? `background-image: url('${webImg}'); background-size: cover;` : ''}">
+                    ${!isEssent ? `<div class="absolute inset-y-0 right-0 w-[55%] pointer-events-none opacity-30 bg-repeat bg-[length:40px_40px]"></div>` : ''}
+                    
+                    <div class="w-full mx-auto px-8 z-10">
+                        <div class="flex w-full">
+                            <div class="w-5/12 ${!isEssent ? 'bg-[#31006E] rounded-r-full pr-12 py-6 -ml-8 pl-8' : ''}">
+                                <div class="inline-flex flex-col">
+                                    <span class="text-2xl font-black text-white uppercase leading-tight tracking-tight mb-2">${b.Title || b.Name}</span>
+                                    ${b.Subtitle ? `<span class="text-[13px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} ">${b.Subtitle}</span>` : ''}
+                                </div>
+                                <div class="flex items-center gap-4 mt-5">
+                                    <button class="${colors.webCtaText} ${colors.ctaBorder} flex-shrink-0 font-bold text-xs px-5 py-2.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center gap-2" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
+                                    ${b.DismissBannerLabel ? `<a href="#" class="text-white text-[11px] underline opacity-80 hover:opacity-100 whitespace-nowrap">${b.DismissBannerLabel}</a>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const mobileHTML = `
+                <div class="rounded-xl overflow-hidden shadow-lg w-[320px] shrink-0 mx-auto flex flex-col relative" style="background-color: ${colors.mainBg}">
+                    <div class="p-8 flex flex-col h-full z-10 ${!isEssent ? 'bg-[#66BC29]' : ''}">
+                        <h2 class="text-2xl font-black text-white uppercase leading-tight tracking-tight mb-4">${b.Title || b.Name}</h2>
+                        ${b.Subtitle ? `<h3 class="text-lg font-medium text-white mb-6 leading-snug">${b.Subtitle}</h3>` : ''}
+                        
+                        <div class="mt-auto pt-6 flex flex-col items-center w-full">
+                            <button class="${colors.webCtaText} ${colors.ctaBorder} w-full font-bold text-base py-4 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
+                            ${b.DismissBannerLabel ? `<a href="#" class="text-white text-sm underline opacity-90 mx-auto mt-4">${b.DismissBannerLabel}</a>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const appRenderTitle = b.AppTitle || b.Title || b.Name;
+            const appRenderSub = b.AppSubtitle || b.Subtitle || '';
+
+            const appHTML = `
+                <div class="rounded-3xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] w-[320px] shrink-0 mx-auto flex flex-col bg-white border border-slate-100 overflow-hidden relative pb-8 relative group">
+                    ${hasApp ? '<div class="absolute top-2 right-2 bg-indigo-100 text-indigo-700 text-[9px] font-bold px-2 py-0.5 rounded shadow-sm z-50 pointer-events-none">USES APP-SPECIFIC DATA</div>' : ''}
+                    <div class="w-full flex-shrink-0 relative flex flex-col items-center pt-10 px-6 pb-40" style="background-color: ${colors.appHeader}; ${colors.appHeaderStyle}">
+                        ${!isEssent ? `<h2 class="text-2xl font-black ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10 w-full">${appRenderTitle}</h2>` : ''}
+                        ${isEssent ? `<h2 class="text-xl font-bold ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10">${appRenderTitle}</h2>` : ''}
+                    </div>
+                    
+                    ${appImg ? `<div class="relative w-full flex justify-center -mt-36 z-20 px-8 h-32"><img src="${appImg}" class="object-contain h-full max-w-full drop-shadow-md" onerror="this.style.display='none'" /></div>` : '<div class="h-8"></div>'}
+                    
+                    <div class="px-6 flex flex-col flex-1 ${!appImg ? 'mt-4' : ''}">
+                       ${!isEssent ? `<p class="text-slate-600 text-center text-lg font-medium mt-6 mb-8 leading-snug">${appRenderSub}</p>` : ''}
+                       ${isEssent && appRenderSub ? `<p class="text-slate-800 text-base mt-6 mb-6">${appRenderSub}</p>` : ''}
+                       
+                       <div class="mt-auto flex flex-col items-center w-full mt-4">
+                           <button class="${colors.ctaText} ${colors.ctaBorder} w-full font-bold text-lg py-3.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2 block" style="background-color: ${colors.ctaBg}">
+                               <span>${appCtaText}</span> ${!isEssent ? '' : ''}
+                               <svg class="w-5 h-5 mb-[2px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                           </button>
+                           ${b.DismissBannerLabel ? `<a href="#" class="${isEssent ? 'text-[#1A66FF]' : 'text-[#282a2d]'} text-sm font-medium underline mx-auto mt-4">${b.DismissBannerLabel}</a>` : ''}
+                       </div>
+                    </div>
+                </div>
+            `;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm";
+            wrapper.innerHTML = `
+                <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-800 uppercase tracking-widest">${b.BaseFolder}${b.SubFolder ? ' / ' + b.SubFolder : ''}</span>
+                        <span class="text-xs text-slate-500 font-medium">${b.Name} | ${b.Language}</span>
+                    </div>
+                    <span class="text-xs font-semibold px-2 py-1 bg-slate-200 text-slate-700 rounded">${idx + 1} / ${toRender.length}</span>
+                </div>
+                <div class="p-8 w-[100%] overflow-x-auto bg-slate-200/50">
+                    <div class="flex flex-col xl:flex-row gap-8 items-start justify-center min-w-[max-content]">
+                        <div class="flex flex-col items-center gap-3">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded shadow-sm border border-slate-100">Desktop Web</span>
+                            ${desktopHTML}
+                        </div>
+                        <div class="flex gap-8">
+                             <div class="flex flex-col items-center gap-3">
+                                 <span class="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded shadow-sm border border-slate-100">Web Mobile</span>
+                                 ${mobileHTML}
+                             </div>
+                             <div class="flex flex-col items-center gap-3">
+                                 <span class="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded shadow-sm border border-slate-100">In-App View</span>
+                                 ${appHTML}
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            fragment.appendChild(wrapper);
+        });
+
+        DOM.emulatorGrid.appendChild(fragment);
+
+        if (results.length > max) {
+            const notice = document.createElement('div');
+            notice.className = "text-center py-4 text-sm font-medium text-slate-500";
+            notice.textContent = `Showing 1-${max} out of ${results.length} results. Please narrow down via filters for more.`;
+            DOM.emulatorGrid.appendChild(notice);
         }
     }
 

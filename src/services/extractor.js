@@ -124,6 +124,7 @@ async function extractBanners(unpackedDirPath) {
                                 AppSubtitle: '',
                                 AppImage: '',
                                 AppImageAlt: '',
+                                DismissBannerLabel: '',
                                 CTAs: []
                             };
 
@@ -144,6 +145,7 @@ async function extractBanners(unpackedDirPath) {
                                 else if (key === '__updated') bannerData.Updated = content;
                                 else if (key === 'appbannertitle') bannerData.AppTitle = content;
                                 else if (key === 'appbannersubtitle') bannerData.AppSubtitle = content;
+                                else if (key === 'dismissbannerlabel') bannerData.DismissBannerLabel = content;
                                 else if (['heroimage', 'background', 'contentimage'].includes(key)) {
                                     if (!bannerData.HeroImage && typeof content === 'string') {
                                         const match = content.match(/mediaid="({[^}]+})"/);
