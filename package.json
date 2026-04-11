@@ -1,0 +1,20 @@
+{
+  "name": "sitecorebannerstore",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000s\u0000i\u0000t\u0000e\u0000c\u0000o\u0000r\u0000e\u0000b\u0000a\u0000n\u0000n\u0000e\u0000r\u0000s\u0000t\u0000o\u0000r\u0000e\u0000\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "fs-extra": "^11.3.4",
+    "multer": "^2.1.1",
+    "xml2js": "^0.6.2"
+  }
+}

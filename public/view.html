@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBS Banner Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white shadow-md z-10 relative flex-shrink-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/" class="text-indigo-100 hover:text-white transition-colors bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Back to Portal
+                </a>
+                <h1 class="text-2xl font-bold tracking-tight">Archive Explorer</h1>
+            </div>
+            <div class="text-sm font-medium bg-indigo-700 py-1 px-3 rounded-full" id="resultCount">0 Banners</div>
+        </div>
+    </header>
+
+    <div id="loadingState" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center hidden">
+        <div class="flex flex-col items-center gap-3">
+            <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-slate-600 font-medium">Loading banner data...</span>
+        </div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden min-h-0">
+        <!-- Sidebar Filters -->
+        <aside class="w-80 bg-white shadow-xl overflow-y-auto p-6 z-0 flex flex-col gap-6 relative flex-shrink-0">
+            <div>
+                <h3 class="text-xs uppercase tracking-wider font-semibold text-slate-400 mb-3">Filters & Settings</h3>
+
+                <div class="mb-5 bg-slate-50 p-3 rounded-md border border-slate-200 flex flex-col gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Media Host Prefix</label>
+                        <input type="text" id="mediaHostInput" value="https://www.essent.nl/-/media/"
+                            placeholder="https://domain/-/media/"
+                            class="w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
+                    <input type="text" id="searchInput" placeholder="Search title or ID..."
+                        class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Language</label>
+                    <div class="flex gap-2" id="languageFilters">
+                    </div>
+                </div>
+
+                <div class="mb-5 border-t border-slate-100 pt-5">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Category / Year</label>
+                    <div class="flex flex-col gap-2" id="baseFolderFilters">
+                    </div>
+                </div>
+
+                <div class="mb-5 border-t border-slate-100 pt-5">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Subfolder / Campaign</label>
+                    <select id="subFolderSelect"
+                        class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">All Subfolders</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="resetFilters"
+                class="mt-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded transition-colors text-sm">
+                Reset All Filters
+            </button>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 bg-slate-50 p-6 overflow-y-auto" id="mainScroll">
+            <div class="max-w-7xl mx-auto h-full flex flex-col">
+                <div id="bannerGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-slate-400 mt-10">
+                    <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                    <p class="text-lg font-medium">No banners found matching your filters.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Application Logic -->
+    <script src="/js/view.js"></script>
+</body>
+
+</html>
