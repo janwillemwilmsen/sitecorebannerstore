@@ -252,7 +252,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         const fullAppImageUrl = 'https://essentimages.janwillemwilmsen.workers.dev/?' + encodeURIComponent(state.mediaPrefix + b.AppImage);
                         appImageBlock = `
                             <div class="w-full h-24 bg-slate-100 flex items-center justify-center overflow-hidden relative group mt-2 rounded">
-                                <img src="${fullAppImageUrl}" onerror="this.classList.add('hidden')" alt="${b.AppImageAlt || 'App Banner Image'}" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105" title="${b.AppImageAlt || 'App Banner Image'}" />
+
+
+
+                            <img src="${fullAppImageUrl}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'%2394a3b8\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'3\\' y=\\'3\\' width=\\'18\\' height=\\'18\\' rx=\\'2\\' ry=\\'2\\'></rect><circle cx=\\'8.5\\' cy=\\'8.5\\' r=\\'1.5\\'></circle><polyline points=\\'21 15 16 10 5 21\\'></polyline></svg>'; this.classList.add('w-10', 'h-10', 'opacity-50', 'object-contain'); this.classList.remove('w-full', 'h-full');" alt="Banner Image" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105" />
+                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <a href="${fullAppImageUrl}" target="_blank" class="bg-white text-slate-800 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm hover:bg-slate-50 transition-colors">Full Image</a>
+                    </div>
+
+
+                               
                             </div>
                             ${b.AppImageAlt ? `<div class="mt-1 text-[10px] text-slate-500 px-1"><span class="font-medium text-slate-600">Alt text:</span> <span class="italic">${b.AppImageAlt}</span></div>` : ''}
                         `;
