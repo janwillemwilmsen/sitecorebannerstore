@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SBS Banner Explorer</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -30,21 +31,32 @@
     <header class="bg-indigo-600 text-white shadow-md z-10 relative flex-shrink-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <div class="flex items-center gap-4">
-                <a href="/" class="text-indigo-100 hover:text-white transition-colors bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                <a href="/"
+                    class="text-indigo-100 hover:text-white transition-colors bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
                     Back to Portal
                 </a>
                 <h1 class="text-2xl font-bold tracking-tight mr-4">Archive Explorer</h1>
-                
+
                 <div class="bg-indigo-700 p-1 rounded-lg flex gap-1 shadow-inner">
-                    <button id="modeDataBtn" class="px-4 py-1.5 text-sm font-semibold rounded-md bg-white text-indigo-700 shadow-sm transition-all duration-200">Data View</button>
-                    <button id="modeEmulatorBtn" class="px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200">Emulator View</button>
+                    <button id="modeDataBtn"
+                        class="px-4 py-1.5 text-sm font-semibold rounded-md bg-white text-indigo-700 shadow-sm transition-all duration-200">Data
+                        View</button>
+                    <button id="modeEmulatorBtn"
+                        class="px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200">Emulator
+                        View</button>
                 </div>
-                
-                <div id="brandToggleContainer" class="hidden bg-indigo-800 p-1 rounded-lg flex gap-1 items-center shadow-inner ml-2">
-                   <span class="text-[10px] text-indigo-300 uppercase font-black px-2 tracking-widest">Brand</span>
-                   <button id="brandEssentBtn" class="px-3 py-1.5 text-xs font-bold rounded-md bg-[#E6006E] text-white shadow-sm ring-2 ring-white ring-offset-1 ring-offset-indigo-800 transition-all">Essent</button>
-                   <button id="brandEdBtn" class="px-3 py-1.5 text-xs font-bold rounded-md bg-transparent text-slate-300 hover:text-white hover:bg-indigo-600 transition-all">EnergieDirect</button>
+
+                <div id="brandToggleContainer"
+                    class="hidden bg-indigo-800 p-1 rounded-lg flex gap-1 items-center shadow-inner ml-2">
+                    <span class="text-[10px] text-indigo-300 uppercase font-black px-2 tracking-widest">Brand</span>
+                    <button id="brandEssentBtn"
+                        class="px-3 py-1.5 text-xs font-bold rounded-md bg-[#E6006E] text-white shadow-sm ring-2 ring-white ring-offset-1 ring-offset-indigo-800 transition-all">Essent</button>
+                    <button id="brandEdBtn"
+                        class="px-3 py-1.5 text-xs font-bold rounded-md bg-transparent text-slate-300 hover:text-white hover:bg-indigo-600 transition-all">Energiedirect</button>
                 </div>
             </div>
             <div class="text-sm font-medium bg-indigo-700 py-1 px-3 rounded-full" id="resultCount">0 Banners</div>
@@ -53,9 +65,12 @@
 
     <div id="loadingState" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center hidden">
         <div class="flex flex-col items-center gap-3">
-            <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
             </svg>
             <span class="text-slate-600 font-medium">Loading banner data...</span>
         </div>
@@ -114,12 +129,14 @@
             <div class="max-w-7xl mx-auto h-full flex flex-col">
                 <div id="bannerGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 </div>
-                
+
                 <div id="emulatorGrid" class="hidden flex flex-col gap-12 w-full">
+                    
                 </div>
 
                 <!-- Empty State -->
-                <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-slate-400 mt-10">
+                <div id="emptyState"
+                    class="hidden flex flex-col items-center justify-center py-20 text-slate-400 mt-10">
                     <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                         xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

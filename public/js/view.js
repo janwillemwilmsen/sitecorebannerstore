@@ -330,6 +330,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderEmulator(results, toRender, max) {
         DOM.emulatorGrid.innerHTML = '';
         const fragment = document.createDocumentFragment();
+        const introEmuluator = document.createElement('div')
+        introEmuluator.textContent = 'De banner previews zijn geen 100% exacte weergave van de manier waarop ze op apparaten van klanten getoond worden. Het is een indicatie. '
+        DOM.emulatorGrid.prepend(introEmuluator)
 
         const getImgUrl = (img) => {
             if (!img) return '';
@@ -340,11 +343,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const hasApp = b.AppTitle || b.AppSubtitle || b.AppImage || (b.CTAs && b.CTAs.some(c => c.Key.includes('app')));
             const mainCtas = b.CTAs ? b.CTAs.filter(c => !c.Key.includes('app')) : [];
             const appCtas = b.CTAs ? b.CTAs.filter(c => c.Key.includes('app')) : [];
-            const primaryCta = mainCtas.length > 0 ? mainCtas[0] : null;
-            const primaryAppCta = appCtas.length > 0 ? appCtas[0] : null;
+            const primaryCta = b.CTAs ? b.CTAs.find(c => !c.Key.includes('app')) : null;
+            const primaryAppCta = b.CTAs ? b.CTAs.find(c => c.Key.includes('app')) : null;
 
-            const ctaText = primaryCta ? primaryCta.Text || 'Meer weten' : 'Meer weten';
-            const appCtaText = primaryAppCta ? primaryAppCta.Text || 'Meer weten' : 'Meer weten';
+            const ctaText = primaryCta && primaryCta.Text ? primaryCta.Text : 'No text in CTA';
+            const appCtaText = primaryAppCta && primaryAppCta.Text ? primaryAppCta.Text : 'No text in CTA';
 
             const webImg = getImgUrl(b.HeroImage);
             const appImg = getImgUrl(b.AppImage);
@@ -395,13 +398,17 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             const mobileHTML = `
-                <div class="rounded-xl overflow-hidden shadow-lg w-[320px] shrink-0 mx-auto flex flex-col relative" style="background-color: ${colors.mainBg}">
-                    <div class="p-8 flex flex-col h-full z-10 ${!isEssent ? 'bg-[#66BC29]' : ''}">
-                        <h2 class="text-2xl font-black text-white uppercase leading-tight tracking-tight mb-4">${b.Title || b.Name}</h2>
-                        ${b.Subtitle ? `<h3 class="text-lg font-medium text-white mb-6 leading-snug">${b.Subtitle}</h3>` : ''}
+                <div class="rounded-xl overflow-hidden shadow-lg w-[320px] min-h-[340px] shrink-0 mx-auto flex flex-col relative bg-bottom bg-no-repeat ${!isEssent ? `py-4` : ''}" style="background-color: ${colors.mainBg}; ">
+                    ${!isEssent ? `<div class=" py-2"></div>` : ''}
+                    
+                    <div class="flex flex-col w-full z-10 ${!isEssent ? 'bg-[#31006E] rounded-r-full p-8 -ml-2 pl-10' : 'p-8 h-full'}">
+                        <div class="inline-flex flex-col">
+                            <span class="text-xl font-black text-white uppercase leading-tight tracking-tight mb-2">${b.Title || b.Name}</span>
+                            ${b.Subtitle ? `<span class="text-[12px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} leading-snug">${b.Subtitle}</span>` : ''}
+                        </div>
                         
-                        <div class="mt-auto pt-6 flex flex-col items-center w-full">
-                            <button class="${colors.webCtaText} ${colors.ctaBorder} w-full font-bold text-base py-4 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
+                        <div class="${!isEssent ? 'mt-8' : 'mt-auto pt-6'} flex flex-col items-center w-full">
+                            <button class="${colors.webCtaText} ${colors.ctaBorder} w-full font-bold text-xs py-3.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
                             ${b.DismissBannerLabel ? `<a href="#" class="text-white text-sm underline opacity-90 mx-auto mt-4">${b.DismissBannerLabel}</a>` : ''}
                         </div>
                     </div>
@@ -411,9 +418,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const appRenderTitle = b.AppTitle || b.Title || b.Name;
             const appRenderSub = b.AppSubtitle || b.Subtitle || '';
 
-            const appHTML = `
+            const appHTML = hasApp ? `
                 <div class="rounded-3xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] w-[320px] shrink-0 mx-auto flex flex-col bg-white border border-slate-100 overflow-hidden relative pb-8 relative group">
-                    ${hasApp ? '<div class="absolute top-2 right-2 bg-indigo-100 text-indigo-700 text-[9px] font-bold px-2 py-0.5 rounded shadow-sm z-50 pointer-events-none">USES APP-SPECIFIC DATA</div>' : ''}
+                    
                     <div class="w-full flex-shrink-0 relative flex flex-col items-center pt-10 px-6 pb-40" style="background-color: ${colors.appHeader}; ${colors.appHeaderStyle}">
                         ${!isEssent ? `<h2 class="text-2xl font-black ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10 w-full">${appRenderTitle}</h2>` : ''}
                         ${isEssent ? `<h2 class="text-xl font-bold ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10">${appRenderTitle}</h2>` : ''}
@@ -422,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${appImg ? `<div class="relative w-full flex justify-center -mt-36 z-20 px-8 h-32"><img src="${appImg}" class="object-contain h-full max-w-full drop-shadow-md" onerror="this.style.display='none'" /></div>` : '<div class="h-8"></div>'}
                     
                     <div class="px-6 flex flex-col flex-1 ${!appImg ? 'mt-4' : ''}">
-                       ${!isEssent ? `<p class="text-slate-600 text-center text-lg font-medium mt-6 mb-8 leading-snug">${appRenderSub}</p>` : ''}
+                       ${!isEssent ? `<p class="text-slate-600 text-lg font-medium mt-6 mb-8 leading-snug">${appRenderSub}</p>` : ''}
                        ${isEssent && appRenderSub ? `<p class="text-slate-800 text-base mt-6 mb-6">${appRenderSub}</p>` : ''}
                        
                        <div class="mt-auto flex flex-col items-center w-full mt-4">
@@ -430,19 +437,27 @@ document.addEventListener('DOMContentLoaded', () => {
                                <span>${appCtaText}</span> ${!isEssent ? '' : ''}
                                <svg class="w-5 h-5 mb-[2px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                            </button>
-                           ${b.DismissBannerLabel ? `<a href="#" class="${isEssent ? 'text-[#1A66FF]' : 'text-[#282a2d]'} text-sm font-medium underline mx-auto mt-4">${b.DismissBannerLabel}</a>` : ''}
+                           ${b.DismissBannerLabel ? `<a href="#" class="${isEssent ? 'text-[#1A66FF]' : 'text-[#1E76CE]'} text-sm font-medium underline mx-auto mt-4">${b.DismissBannerLabel}</a>` : ''}
                        </div>
                     </div>
+                </div>
+            ` : `
+                <div class="rounded-3xl shadow-sm w-[320px] shrink-0 mx-auto flex flex-col items-center justify-center bg-slate-50 border border-slate-200 overflow-hidden relative p-8 text-center min-h-[300px]">
+                    <svg class="w-12 h-12 text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <p class="text-sm font-medium text-slate-500">No app banner available.</p>
                 </div>
             `;
 
             const wrapper = document.createElement('div');
+            wrapper.id = `screenshot-${idx}-${toRender.length}`;
+
             wrapper.className = "flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm";
             wrapper.innerHTML = `
                 <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
                     <div class="flex flex-col">
                         <span class="text-sm font-bold text-slate-800 uppercase tracking-widest">${b.BaseFolder}${b.SubFolder ? ' / ' + b.SubFolder : ''}</span>
                         <span class="text-xs text-slate-500 font-medium">${b.Name} | ${b.Language}</span>
+                        <button class="text-xs font-semibold px-2 py-1 bg-slate-200 text-slate-700 rounded" onclick="printScreenshot('${wrapper.id}')">Print screenshot</button>
                     </div>
                     <span class="text-xs font-semibold px-2 py-1 bg-slate-200 text-slate-700 rounded">${idx + 1} / ${toRender.length}</span>
                 </div>
@@ -480,3 +495,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     init();
 });
+
+// Expose globally for inline onclick handlers
+window.printScreenshot = async function (id) {
+    const banner = document.getElementById(id);
+    if (!banner) return;
+
+    // 1. Capture the element
+    const canvas = await html2canvas(banner, {
+        useCORS: true, // Crucial if your images come from a different URL/CDN
+        scale: 2,      // Makes the PNG high-resolution (Retina quality)
+        onclone: (clonedDoc) => {
+            const clonedBanner = clonedDoc.getElementById(id);
+            if (clonedBanner) {
+                // Force the wrapper and its scrollable sections to stretch to full internal width
+                clonedBanner.style.width = 'max-content';
+                const scrollableDiv = clonedBanner.querySelector('.overflow-x-auto');
+                if (scrollableDiv) {
+                    scrollableDiv.style.overflow = 'visible';
+                    scrollableDiv.style.width = 'max-content';
+                }
+            }
+        }
+    });
+
+    // 2. Convert to PNG and trigger download
+    const link = document.createElement('a');
+    link.download = `banner-preview-${id}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+};

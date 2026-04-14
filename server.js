@@ -18,7 +18,10 @@ fs.ensureDirSync(UPLOADS_DIR);
 fs.ensureDirSync(UNPACKED_DIR);
 fs.ensureDirSync(DATA_DIR);
 
-const upload = multer({ dest: UPLOADS_DIR });
+const upload = multer({ 
+    dest: UPLOADS_DIR,
+    limits: { fileSize: 500 * 1024 * 1024 } // 500 MB limit
+});
 
 app.use(express.static('public'));
 app.use(express.json());
