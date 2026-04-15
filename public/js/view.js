@@ -23,9 +23,20 @@ document.addEventListener('DOMContentLoaded', () => {
         reset: document.getElementById('resetFilters'),
         mediaHost: document.getElementById('mediaHostInput'),
         loading: document.getElementById('loadingState'),
+        locatorGrid: null,
         emulatorGrid: document.getElementById('emulatorGrid'),
+        creatorGrid: document.getElementById('creatorGrid'),
+        creatorSearchInput: document.getElementById('creatorSearchInput'),
+        creatorSearchBtn: document.getElementById('creatorSearchBtn'),
+        creatorCanvasContainer: document.getElementById('creatorCanvasContainer'),
+        creatorCanvas: document.getElementById('creatorCanvas'),
+        zoomInBtn: document.getElementById('zoomInBtn'),
+        zoomOutBtn: document.getElementById('zoomOutBtn'),
+        zoomResetBtn: document.getElementById('zoomResetBtn'),
+        zoomLevelIndicator: document.getElementById('zoomLevelIndicator'),
         modeDataBtn: document.getElementById('modeDataBtn'),
         modeEmulatorBtn: document.getElementById('modeEmulatorBtn'),
+        modeCreatorBtn: document.getElementById('modeCreatorBtn'),
         brandToggleContainer: document.getElementById('brandToggleContainer'),
         brandEssentBtn: document.getElementById('brandEssentBtn'),
         brandEdBtn: document.getElementById('brandEdBtn')
@@ -76,8 +87,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         DOM.modeDataBtn.addEventListener('click', () => { state.viewMode = 'data'; updateModeStyles(); render(); });
         DOM.modeEmulatorBtn.addEventListener('click', () => { state.viewMode = 'emulator'; updateModeStyles(); render(); });
+        DOM.modeCreatorBtn.addEventListener('click', () => { state.viewMode = 'creator'; updateModeStyles(); render(); });
         DOM.brandEssentBtn.addEventListener('click', () => { state.brandStyle = 'essent'; updateModeStyles(); render(); });
         DOM.brandEdBtn.addEventListener('click', () => { state.brandStyle = 'energiedirect'; updateModeStyles(); render(); });
+
+        DOM.creatorSearchBtn.addEventListener('click', () => {
+            if (state.viewMode === 'creator') renderCreator();
+        });
+        
+        DOM.creatorSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && state.viewMode === 'creator') renderCreator();
+        });
+
+        setupCreatorZoom();
 
         updateModeStyles();
         render();
@@ -188,6 +210,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (state.viewMode === 'emulator') {
             renderEmulator(results, toRender, renderLimit);
+            return;
+        }
+
+        if (state.viewMode === 'creator') {
+            if (DOM.creatorSearchInput.value.trim() !== '') renderCreator();
             return;
         }
 
@@ -313,18 +340,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateModeStyles() {
+        DOM.modeDataBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200";
+        DOM.modeEmulatorBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200";
+        DOM.modeCreatorBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200";
+
+        if (state.viewMode !== 'data') {
+            DOM.brandToggleContainer.classList.remove('hidden');
+        } else {
+            DOM.brandToggleContainer.classList.add('hidden');
+        }
+        
+        DOM.grid.classList.add('hidden');
+        DOM.emulatorGrid.classList.add('hidden');
+        DOM.creatorGrid.classList.add('hidden');
+
         if (state.viewMode === 'data') {
             DOM.modeDataBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md bg-white text-indigo-700 shadow-sm transition-all duration-200";
-            DOM.modeEmulatorBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200";
-            DOM.brandToggleContainer.classList.add('hidden');
             DOM.grid.classList.remove('hidden');
-            DOM.emulatorGrid.classList.add('hidden');
-        } else {
+        } else if (state.viewMode === 'emulator') {
             DOM.modeEmulatorBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md bg-white text-indigo-700 shadow-sm transition-all duration-200";
-            DOM.modeDataBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200";
-            DOM.brandToggleContainer.classList.remove('hidden');
             DOM.emulatorGrid.classList.remove('hidden');
-            DOM.grid.classList.add('hidden');
+        } else if (state.viewMode === 'creator') {
+            DOM.modeCreatorBtn.className = "px-4 py-1.5 text-sm font-semibold rounded-md bg-white text-indigo-700 shadow-sm transition-all duration-200";
+            DOM.creatorGrid.classList.remove('hidden');
         }
 
         if (state.brandStyle === 'essent') {
@@ -336,12 +374,89 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderEmulator(results, toRender, max) {
-        DOM.emulatorGrid.innerHTML = '';
+    const canvasState = { scale: 1, x: 0, y: 0, isDragging: false, startX: 0, startY: 0 };
+    
+    function setupCreatorZoom() {
+        const container = DOM.creatorCanvasContainer;
+        const canvas = DOM.creatorCanvas;
+
+        const updateTransform = () => {
+            canvas.style.transform = `scale(${canvasState.scale}) translate(${canvasState.x}px, ${canvasState.y}px)`;
+            DOM.zoomLevelIndicator.textContent = `${Math.round(canvasState.scale * 100)}%`;
+        };
+
+        container.addEventListener('wheel', (e) => {
+            if (state.viewMode !== 'creator') return;
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            canvasState.scale = Math.max(0.2, Math.min(canvasState.scale + delta, 3));
+            updateTransform();
+        }, { passive: false });
+        
+        container.addEventListener('mousedown', (e) => {
+            if (e.target.closest('#creatorCanvas') && !e.target.classList.contains('p-12')) {
+                if (e.target.isContentEditable || e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.tagName === 'INPUT') return;
+            }
+            if (state.viewMode !== 'creator') return;
+            canvasState.isDragging = true;
+            canvasState.startX = e.clientX - (canvasState.x * canvasState.scale);
+            canvasState.startY = e.clientY - (canvasState.y * canvasState.scale);
+            container.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!canvasState.isDragging) return;
+            canvasState.x = (e.clientX - canvasState.startX) / canvasState.scale;
+            canvasState.y = (e.clientY - canvasState.startY) / canvasState.scale;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            canvasState.isDragging = false;
+            container.style.cursor = 'grab';
+        });
+
+        DOM.zoomInBtn.addEventListener('click', () => {
+            canvasState.scale = Math.min(canvasState.scale + 0.1, 3);
+            updateTransform();
+        });
+
+        DOM.zoomOutBtn.addEventListener('click', () => {
+            canvasState.scale = Math.max(canvasState.scale - 0.1, 0.2);
+            updateTransform();
+        });
+
+        DOM.zoomResetBtn.addEventListener('click', () => {
+            canvasState.scale = 1;
+            canvasState.x = 0;
+            canvasState.y = 0;
+            updateTransform();
+        });
+    }
+
+    function renderCreator() {
+        const term = DOM.creatorSearchInput.value.toLowerCase().trim();
+        if (!term) return;
+
+        const match = state.data.find(b => b.Name.toLowerCase() === term);
+
+        if (!match) {
+           DOM.creatorCanvas.innerHTML = `<div class="p-8 text-slate-500 font-medium bg-white rounded-lg shadow-sm border border-slate-200">No banner found exactly matching name "${DOM.creatorSearchInput.value}"</div>`;
+           return;
+        }
+
+        renderEmulator(state.data, [match], 1, DOM.creatorCanvas, true);
+    }
+
+    function renderEmulator(results, toRender, max, targetDOM = DOM.emulatorGrid, isCreatorMode = false) {
+        targetDOM.innerHTML = '';
         const fragment = document.createDocumentFragment();
-        const introEmuluator = document.createElement('div')
-        introEmuluator.textContent = 'De banner previews zijn geen exacte weergave van de manier waarop ze op apparaten van klanten getoond worden. De weergave is een indicatie.'
-        DOM.emulatorGrid.prepend(introEmuluator)
+        
+        if (!isCreatorMode) {
+            const introEmuluator = document.createElement('div')
+            introEmuluator.textContent = 'De banner previews zijn geen exacte weergave van de manier waarop ze op apparaten van klanten getoond worden. De weergave is een indicatie.'
+            targetDOM.prepend(introEmuluator)
+        }
 
         const getImgUrl = (img) => {
             if (!img) return '';
@@ -492,13 +607,13 @@ document.addEventListener('DOMContentLoaded', () => {
             fragment.appendChild(wrapper);
         });
 
-        DOM.emulatorGrid.appendChild(fragment);
+        targetDOM.appendChild(fragment);
 
-        if (results.length > max) {
+        if (!isCreatorMode && results.length > max) {
             const notice = document.createElement('div');
             notice.className = "text-center py-4 text-sm font-medium text-slate-500";
             notice.textContent = `Showing 1-${max} out of ${results.length} results. Please narrow down via filters for more.`;
-            DOM.emulatorGrid.appendChild(notice);
+            targetDOM.appendChild(notice);
         }
     }
 
