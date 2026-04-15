@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Construct the image HTML block if standard image exists
             let imageBlock = '';
             if (b.HeroImage) {
-                const fullImageUrl = 'https://essentimages.janwillemwilmsen.workers.dev/?' + encodeURIComponent(state.mediaPrefix + b.HeroImage);
+                const fullImageUrl = 'https://essentimages.janwillemwilmsen.workers.dev/?' + (state.mediaPrefix + b.HeroImage);
                 imageBlock = `
                 <div class="w-full h-24 bg-slate-100 flex items-center justify-center overflow-hidden relative group">
                     <img src="${fullImageUrl}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'%2394a3b8\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'3\\' y=\\'3\\' width=\\'18\\' height=\\'18\\' rx=\\'2\\' ry=\\'2\\'></rect><circle cx=\\'8.5\\' cy=\\'8.5\\' r=\\'1.5\\'></circle><polyline points=\\'21 15 16 10 5 21\\'></polyline></svg>'; this.classList.add('w-10', 'h-10', 'opacity-50', 'object-contain'); this.classList.remove('w-full', 'h-full');" alt="Banner Image" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105" />
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     let appImageBlock = '';
                     if (b.AppImage) {
-                        const fullAppImageUrl = 'https://essentimages.janwillemwilmsen.workers.dev/?' + encodeURIComponent(state.mediaPrefix + b.AppImage);
+                        const fullAppImageUrl = 'https://essentimages.janwillemwilmsen.workers.dev/?' + (state.mediaPrefix + b.AppImage);
                         appImageBlock = `
                             <div class="w-full h-24 bg-slate-100 flex items-center justify-center overflow-hidden relative group mt-2 rounded">
 
@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.emulatorGrid.innerHTML = '';
         const fragment = document.createDocumentFragment();
         const introEmuluator = document.createElement('div')
-        introEmuluator.textContent = 'De banner previews zijn geen 100% exacte weergave van de manier waarop ze op apparaten van klanten getoond worden. Het is een indicatie. '
+        introEmuluator.textContent = 'De banner previews zijn geen exacte weergave van de manier waarop ze op apparaten van klanten getoond worden. De weergave is een indicatie.'
         DOM.emulatorGrid.prepend(introEmuluator)
 
         const getImgUrl = (img) => {
@@ -393,11 +393,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="flex w-full">
                             <div class="w-5/12 ${!isEssent ? 'bg-[#31006E] rounded-r-full pr-12 py-6 -ml-8 pl-8' : ''}">
                                 <div class="inline-flex flex-col">
-                                    <span class="text-2xl font-black text-white uppercase leading-tight tracking-tight mb-2">${b.Title || b.Name}</span>
-                                    ${b.Subtitle ? `<span class="text-[13px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} ">${b.Subtitle}</span>` : ''}
+                                    <span class="text-2xl font-black text-white uppercase leading-tight tracking-tight mb-2" contenteditable="true">${b.Title || b.Name}</span>
+                                    ${b.Subtitle ? `<span contenteditable="true" class="text-[13px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} ">${b.Subtitle}</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-4 mt-5">
-                                    <button class="${colors.webCtaText} ${colors.ctaBorder} flex-shrink-0 font-bold text-xs px-5 py-2.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center gap-2" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
+                                    <button class="${colors.webCtaText} ${colors.ctaBorder} flex-shrink-0 font-bold text-xs px-5 py-2.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center gap-2" contenteditable="true" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
                                     ${b.DismissBannerLabel ? `<a href="#" class="text-white text-[11px] underline opacity-80 hover:opacity-100 whitespace-nowrap">${b.DismissBannerLabel}</a>` : ''}
                                 </div>
                             </div>
@@ -412,12 +412,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     <div class="flex flex-col w-full z-10 ${!isEssent ? 'bg-[#31006E] rounded-r-full p-8 -ml-2 pl-10' : 'p-8 h-full'}">
                         <div class="inline-flex flex-col">
-                            <span class="text-xl font-black text-white uppercase leading-tight tracking-tight mb-2">${b.Title || b.Name}</span>
-                            ${b.Subtitle ? `<span class="text-[12px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} leading-snug">${b.Subtitle}</span>` : ''}
+                            <span class="text-xl font-black text-white uppercase leading-tight tracking-tight mb-2" contenteditable="true">${b.Title || b.Name}</span>
+                            ${b.Subtitle ? `<span contenteditable="true" class="text-[12px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} leading-snug">${b.Subtitle}</span>` : ''}
                         </div>
                         
                         <div class="${!isEssent ? 'mt-8' : 'mt-auto pt-6'} flex flex-col items-center w-full">
-                            <button class="${colors.webCtaText} ${colors.ctaBorder} w-full font-bold text-xs py-3.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
+                            <button class="${colors.webCtaText} ${colors.ctaBorder} w-full font-bold text-xs py-3.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2" contenteditable="true" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
                             ${b.DismissBannerLabel ? `<a href="#" class="text-white text-sm underline opacity-90 mx-auto mt-4">${b.DismissBannerLabel}</a>` : ''}
                         </div>
                     </div>
@@ -431,22 +431,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="rounded-3xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] w-[320px] shrink-0 mx-auto flex flex-col bg-white border border-slate-100 overflow-hidden relative pb-8 relative group">
                     
                     <div class="w-full flex-shrink-0 relative flex flex-col items-center pt-10 px-6 pb-40" style="background-color: ${colors.appHeader}; ${colors.appHeaderStyle}">
-                        ${!isEssent ? `<h2 class="text-2xl font-black ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10 w-full">${appRenderTitle}</h2>` : ''}
-                        ${isEssent ? `<h2 class="text-xl font-bold ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10">${appRenderTitle}</h2>` : ''}
+                        ${!isEssent ? `<h2 class="text-2xl font-black ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10 w-full" contenteditable="true">${appRenderTitle}</h2>` : ''}
+                        ${isEssent ? `<h2 class="text-xl font-bold ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10" contenteditable="true">${appRenderTitle}</h2>` : ''}
                     </div>
                     
                     ${appImg ? `<div class="relative w-full flex justify-center -mt-36 z-20 px-8 h-32"><img src="${appImg}" class="object-contain h-full max-w-full drop-shadow-md" onerror="this.style.display='none'" /></div>` : '<div class="h-8"></div>'}
                     
                     <div class="px-6 flex flex-col flex-1 ${!appImg ? 'mt-4' : ''}">
-                       ${!isEssent ? `<p class="text-slate-600 text-lg font-medium mt-6 mb-8 leading-snug">${appRenderSub}</p>` : ''}
-                       ${isEssent && appRenderSub ? `<p class="text-slate-800 text-base mt-6 mb-6">${appRenderSub}</p>` : ''}
+                       ${!isEssent ? `<p contenteditable="true" class="text-slate-600 text-lg font-medium mt-6 mb-8 leading-snug">${appRenderSub}</p>` : ''}
+                       ${isEssent && appRenderSub ? `<p contenteditable="true" class="text-slate-800 text-base mt-6 mb-6">${appRenderSub}</p>` : ''}
                        
                        <div class="mt-auto flex flex-col items-center w-full mt-4">
-                           <button class="${colors.ctaText} ${colors.ctaBorder} w-full font-bold text-lg py-3.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2 block" style="background-color: ${colors.ctaBg}">
+                           <button class="${colors.ctaText} ${colors.ctaBorder} w-full font-bold text-lg py-3.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2 block" contenteditable="true" style="background-color: ${colors.ctaBg}">
                                <span>${appCtaText}</span> ${!isEssent ? '' : ''}
                                <svg class="w-5 h-5 mb-[2px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                            </button>
-                           ${b.DismissBannerLabel ? `<a href="#" class="${isEssent ? 'text-[#1A66FF]' : 'text-[#1E76CE]'} text-sm font-medium underline mx-auto mt-4">${b.DismissBannerLabel}</a>` : ''}
+                           ${b.DismissBannerLabel ? `<a href="#" class="${isEssent ? 'text-[#1A66FF]' : 'text-[#1E76CE]'} text-sm font-medium underline mx-auto mt-4" contenteditable="true">${b.DismissBannerLabel}</a>` : ''}
                        </div>
                     </div>
                 </div>
