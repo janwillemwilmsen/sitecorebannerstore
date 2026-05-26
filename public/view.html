@@ -146,16 +146,68 @@
                         <button id="creatorSearchBtn" class="mt-0 md:mt-5 px-5 py-2 w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-semibold shadow-sm transition-colors whitespace-nowrap">Load Banner</button>
                     </div>
                     
-                    <div class="flex-1 bg-slate-200/50 rounded-xl border border-slate-200 overflow-hidden relative cursor-grab active:cursor-grabbing w-full shadow-inner" id="creatorCanvasContainer">
-                        <div id="creatorCanvas" class="absolute origin-top-left p-12 transition-transform duration-75 flex justify-center min-w-[max-content]" style="transform: scale(1) translate(0px, 0px);">
-                            <!-- The single mapped emulator HTML will be injected here -->
+                    <div id="creatorWorkflow" class="hidden flex flex-1 overflow-hidden gap-6">
+                        <!-- AI Sidebar -->
+                        <div class="w-80 flex flex-col gap-4 overflow-y-auto pr-2 scrollbar-hide flex-shrink-0">
+                            <!-- Top preview of original -->
+                            <div class="bg-slate-100 rounded-xl overflow-hidden shadow-inner flex items-center justify-center min-h-[150px] relative pointer-events-none" style="zoom: 0.5">
+                                <div id="creatorTopPreview" class="transform origin-top"></div>
+                            </div>
+                            
+                            <div class="bg-white border text-sm border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Gemini API Key</label>
+                                    <input type="password" id="geminiApiKey" class="w-full border text-xs border-slate-300 rounded px-2 py-1.5 focus:ring-indigo-500" placeholder="AI Studio Key...">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Target Format</label>
+                                    <select id="aiFormatSelect" class="w-full border text-xs border-slate-300 rounded px-2 py-1.5 focus:ring-indigo-500">
+                                        <option value="desktop">Desktop Banner</option>
+                                        <option value="app">Mobile App Card</option>
+                                    </select>
+                                </div>
+                                <hr class="border-slate-100">
+                                <div>
+                                    <label class="block text-xs font-bold text-indigo-700 mb-1">Copy Prompt</label>
+                                    <textarea id="aiCopyPrompt" rows="2" class="w-full border text-xs border-slate-300 rounded px-2 py-1.5 focus:ring-indigo-500 resize-none" placeholder="e.g. Write an energetic title and subtitle about winter."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-indigo-700 mb-1">Image Prompt</label>
+                                    <textarea id="aiImagePrompt" rows="2" class="w-full border text-xs border-slate-300 rounded px-2 py-1.5 focus:ring-indigo-500 resize-none" placeholder="e.g. A modern family next to a green heater."></textarea>
+                                </div>
+                                <button id="generateVariantsBtn" class="w-full mt-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-xs shadow-sm transition-colors relative">
+                                    <span class="flex items-center justify-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                        Generate Variants
+                                    </span>
+                                </button>
+                            </div>
+
+                            <!-- Variants Display -->
+                            <div id="aiVariantsSection" class="hidden flex-col gap-3 relative pb-4">
+                                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Generated Variants</h3>
+                                <div id="aiSpinnerOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl hidden border border-slate-200">
+                                    <svg class="animate-spin h-8 w-8 text-indigo-600 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span id="aiLoadingStatus" class="text-[10px] font-bold text-indigo-800 tracking-wider uppercase">Processing...</span>
+                                </div>
+                                <div id="aiVariantsGrid" class="flex flex-col gap-4">
+                                    <!-- Cards populated by JS -->
+                                </div>
+                            </div>
                         </div>
-                        
-                        <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 p-1 z-20">
-                             <button class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition font-bold" id="zoomOutBtn">-</button>
-                             <span class="px-2 text-xs font-semibold text-slate-500 w-12 text-center" id="zoomLevelIndicator">100%</span>
-                             <button class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition font-bold" id="zoomInBtn">+</button>
-                             <button class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition ml-1 text-[10px]" id="zoomResetBtn">RESET</button>
+
+                        <!-- Main Canvas -->
+                        <div class="flex-1 bg-slate-200/50 rounded-xl border border-slate-200 overflow-hidden relative cursor-grab active:cursor-grabbing shadow-inner w-full" id="creatorCanvasContainer">
+                            <div id="creatorCanvas" class="absolute origin-top-left p-12 transition-transform duration-75 flex justify-center min-w-[max-content]" style="transform: scale(1) translate(0px, 0px);">
+                                <span class="text-slate-400 font-medium text-sm">Select a variant above to compile here.</span>
+                            </div>
+                            
+                            <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 p-1 z-20">
+                                 <button class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition font-bold" id="zoomOutBtn">-</button>
+                                 <span class="px-2 text-xs font-semibold text-slate-500 w-12 text-center" id="zoomLevelIndicator">100%</span>
+                                 <button class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition font-bold" id="zoomInBtn">+</button>
+                                 <button class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition ml-1 text-[10px]" id="zoomResetBtn">RESET</button>
+                            </div>
                         </div>
                     </div>
                 </div>

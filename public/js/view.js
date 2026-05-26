@@ -28,6 +28,17 @@ document.addEventListener('DOMContentLoaded', () => {
         creatorGrid: document.getElementById('creatorGrid'),
         creatorSearchInput: document.getElementById('creatorSearchInput'),
         creatorSearchBtn: document.getElementById('creatorSearchBtn'),
+        creatorWorkflow: document.getElementById('creatorWorkflow'),
+        creatorTopPreview: document.getElementById('creatorTopPreview'),
+        geminiApiKey: document.getElementById('geminiApiKey'),
+        aiFormatSelect: document.getElementById('aiFormatSelect'),
+        aiImagePrompt: document.getElementById('aiImagePrompt'),
+        aiCopyPrompt: document.getElementById('aiCopyPrompt'),
+        generateVariantsBtn: document.getElementById('generateVariantsBtn'),
+        aiSpinnerOverlay: document.getElementById('aiSpinnerOverlay'),
+        aiLoadingStatus: document.getElementById('aiLoadingStatus'),
+        aiVariantsSection: document.getElementById('aiVariantsSection'),
+        aiVariantsGrid: document.getElementById('aiVariantsGrid'),
         creatorCanvasContainer: document.getElementById('creatorCanvasContainer'),
         creatorCanvas: document.getElementById('creatorCanvas'),
         zoomInBtn: document.getElementById('zoomInBtn'),
@@ -44,6 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize App
     function init() {
+        const savedKey = localStorage.getItem('gemini_api_key');
+        if (savedKey && DOM.geminiApiKey) DOM.geminiApiKey.value = savedKey;
+        if (DOM.geminiApiKey) DOM.geminiApiKey.addEventListener('change', (e) => localStorage.setItem('gemini_api_key', e.target.value.trim()));
         const urlParams = new URLSearchParams(window.location.search);
         const archiveId = urlParams.get('id');
 
@@ -98,6 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.creatorSearchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && state.viewMode === 'creator') renderCreator();
         });
+
+        if (DOM.generateVariantsBtn) {
+            DOM.generateVariantsBtn.addEventListener('click', generateVariantsLogic);
+        }
 
         setupCreatorZoom();
 
@@ -434,6 +452,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    let referenceBannerObj = null;
+
     function renderCreator() {
         const term = DOM.creatorSearchInput.value.toLowerCase().trim();
         if (!term) return;
@@ -441,11 +461,215 @@ document.addEventListener('DOMContentLoaded', () => {
         const match = state.data.find(b => b.Name.toLowerCase() === term);
 
         if (!match) {
-           DOM.creatorCanvas.innerHTML = `<div class="p-8 text-slate-500 font-medium bg-white rounded-lg shadow-sm border border-slate-200">No banner found exactly matching name "${DOM.creatorSearchInput.value}"</div>`;
-           return;
+            DOM.creatorTopPreview.innerHTML = `<div class="p-8 text-slate-500 font-medium w-full text-center">No banner found exactly matching name "${DOM.creatorSearchInput.value}"</div>`;
+            DOM.creatorWorkflow.classList.remove('hidden');
+            return;
         }
 
-        renderEmulator(state.data, [match], 1, DOM.creatorCanvas, true);
+        referenceBannerObj = match;
+        DOM.creatorWorkflow.classList.remove('hidden');
+        renderEmulator(state.data, [match], 1, DOM.creatorTopPreview, true);
+
+        DOM.aiVariantsSection.classList.add('hidden');
+        DOM.aiVariantsGrid.innerHTML = '';
+        DOM.creatorCanvas.innerHTML = '<span class="text-slate-400 font-medium text-sm">Select a variant above to compile here.</span>';
+    }
+
+    async function generateVariantsLogic() {
+        if (!referenceBannerObj) return alert('Load a reference banner first!');
+        const apiKey = DOM.geminiApiKey.value.trim();
+        if (!apiKey) return alert('Please provide your Gemini API key.');
+
+        const format = DOM.aiFormatSelect.value;
+        const copyPrompt = DOM.aiCopyPrompt.value.trim();
+        const imgPrompt = DOM.aiImagePrompt.value.trim();
+
+        if (!copyPrompt && !imgPrompt) return alert('Please enter at least one prompt (Copy or Image).');
+
+        DOM.aiSpinnerOverlay.classList.remove('hidden');
+        DOM.aiLoadingStatus.textContent = 'Preparing images...';
+
+        try {
+            const originalImgUrl = format === 'app' ? referenceBannerObj.AppImage : referenceBannerObj.HeroImage;
+            let base64Image = null;
+            let mimeType = 'image/jpeg';
+            if (originalImgUrl) {
+                const proxyUrl = 'https://essentimages.janwillemwilmsen.workers.dev/?' + encodeURIComponent(state.mediaPrefix + originalImgUrl);
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error('Fetch failed');
+                    const blob = await response.blob();
+                    mimeType = blob.type;
+                    base64Image = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (e) {
+                    console.warn('Could not fetch image for base64 over workers dev.', e);
+                }
+            }
+
+            let newCopies = [];
+            if (copyPrompt) {
+                DOM.aiLoadingStatus.textContent = 'Generating Copy Variants (Gemini-2.5-Flash-Lite)...';
+                const currentText = `Title: ${referenceBannerObj.Title || referenceBannerObj.Name}\nSubtitle: ${referenceBannerObj.Subtitle || ''}\nCTA: ${referenceBannerObj.CTAs && referenceBannerObj.CTAs[0] ? referenceBannerObj.CTAs[0].Text : ''}`;
+
+                let geminiPrompt = `You are an expert copywriter. Based on the user prompt: "${copyPrompt}".\n\nThe original text is:\n${currentText}\n\nGenerate strictly 3 distinct, high-quality variations. Return ONLY a valid JSON array of objects without markdown wrappers. Format: [{"title": "...", "subtitle": "...", "cta": "..."}]`;
+
+                let contents = [{ role: 'user', parts: [{ text: geminiPrompt }] }];
+                if (base64Image) {
+                    contents[0].parts.unshift({
+                        inlineData: { mimeType: mimeType, data: base64Image }
+                    });
+                }
+
+                const resText = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents, generationConfig: { responseMimeType: "application/json" } })
+                });
+                const dataText = await resText.json();
+                if (dataText.error) throw new Error(dataText.error.message);
+
+                try {
+                    const textOutput = dataText.candidates[0].content.parts[0].text;
+                    newCopies = JSON.parse(textOutput.replace(/^```json\s*/, '').replace(/\s*```$/, ''));
+                } catch (e) {
+                    throw new Error('Failed to parse Gemini generated JSON: ' + dataText.candidates[0].content.parts[0].text);
+                }
+            } else {
+                newCopies = [1, 2, 3].map(() => ({
+                    title: referenceBannerObj.Title || referenceBannerObj.Name,
+                    subtitle: referenceBannerObj.Subtitle || '',
+                    cta: referenceBannerObj.CTAs && referenceBannerObj.CTAs.length > 0 ? referenceBannerObj.CTAs[0].Text : 'Meer weten'
+                }));
+            }
+
+            let newImages = [];
+            if (imgPrompt) {
+                DOM.aiLoadingStatus.textContent = 'Generating Image Variants...';
+                try {
+                    const promises = [];
+                    for (let i = 0; i < 3; i++) {
+                        let imageContents = [{ role: 'user', parts: [{ text: "Generate an image variation based on this prompt: " + imgPrompt + ". Variation " + (i + 1) }] }];
+                        if (base64Image) {
+                             imageContents[0].parts.unshift({
+                                 inlineData: { mimeType: mimeType, data: base64Image }
+                             });
+                        }
+
+                        promises.push(
+                            fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    contents: imageContents,
+                                    generationConfig: {
+                                        responseModalities: ["TEXT", "IMAGE"]
+                                    }
+                                })
+                            }).then(res => res.json())
+                        );
+                    }
+
+                    const results = await Promise.all(promises);
+                    newImages = [];
+                    
+                    results.forEach(dataImg => {
+                        if (dataImg.error) throw new Error(dataImg.error.message);
+                        if (dataImg.candidates && dataImg.candidates[0].content.parts) {
+                            const part = dataImg.candidates[0].content.parts.find(p => p.inlineData);
+                            if (part) {
+                                newImages.push(`data:${part.inlineData.mimeType || 'image/jpeg'};base64,${part.inlineData.data}`);
+                            }
+                        }
+                    });
+
+                    if (newImages.length === 0) {
+                        throw new Error('No images parsed from Gemini Response.');
+                    }
+                } catch (e) {
+                    console.error("Gemini API Error:", e);
+                    const fallbackImgUrl = base64Image ? `data:${mimeType};base64,${base64Image}` : null;
+                    newImages = [fallbackImgUrl, fallbackImgUrl, fallbackImgUrl];
+                    setTimeout(() => alert("Warning: Image Generation via Gemini-2.5-Flash failed. Loading Text variants using original image! \n\n" + e.message), 500);
+                }
+            } else {
+                const fallbackImgUrl = base64Image ? `data:${mimeType};base64,${base64Image}` : null;
+                newImages = [fallbackImgUrl, fallbackImgUrl, fallbackImgUrl];
+            }
+
+            DOM.aiLoadingStatus.textContent = 'Building UI...';
+
+            while (newCopies.length < 3) newCopies.push(newCopies[0] || {});
+            while (newImages.length < 3) newImages.push(newImages[0] || null);
+
+            renderVariantGrid(newCopies, newImages, format);
+
+        } catch (err) {
+            alert('AI Generation Error: ' + err.message);
+        } finally {
+            DOM.aiSpinnerOverlay.classList.add('hidden');
+        }
+    }
+
+    function renderVariantGrid(copies, images, format) {
+        DOM.aiVariantsGrid.innerHTML = '';
+        DOM.aiVariantsSection.classList.remove('hidden');
+
+        for (let i = 0; i < 3; i++) {
+            const card = document.createElement('div');
+            card.className = "bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3 group relative overflow-hidden";
+            card.innerHTML = `
+                <div class="h-40 bg-slate-100 rounded flex items-center justify-center overflow-hidden border border-slate-200">
+                    ${images[i] ? `<img src="${images[i]}" class="w-full h-full object-cover">` : '<span class="text-slate-400 text-xs">No Image Available</span>'}
+                </div>
+                <div class="flex-1 flex flex-col">
+                    <h4 class="font-black text-sm text-slate-800 mb-1 leading-tight">${copies[i]?.title || '...'}</h4>
+                    <p class="text-xs text-slate-500 mb-3 font-semibold">${copies[i]?.subtitle || '...'}</p>
+                    <div class="mt-auto pt-2 border-t border-slate-100">
+                      <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 font-bold text-[10px] px-2 py-1 rounded-full uppercase tracking-wider">CTA: ${copies[i]?.cta || '...'}</span>
+                    </div>
+                </div>
+                <button class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded mt-2 transition-colors focus:ring-2 select-variant-btn" data-idx="${i}">Compile into Canvas &rarr;</button>
+            `;
+            DOM.aiVariantsGrid.appendChild(card);
+        }
+
+        DOM.aiVariantsGrid.querySelectorAll('.select-variant-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                DOM.aiVariantsGrid.querySelectorAll('div.border-indigo-500').forEach(c => c.classList.remove('border-indigo-500', 'ring-2', 'ring-indigo-100'));
+                const card = e.target.closest('.bg-white.p-4');
+                card.classList.add('border-indigo-500', 'ring-2', 'ring-indigo-100');
+
+                const idx = parseInt(e.target.getAttribute('data-idx'));
+                compileVariantToBottomCanvas(copies[idx], images[idx], format);
+            });
+        });
+    }
+
+    function compileVariantToBottomCanvas(copy, imageB64, format) {
+        const modifiedBanner = JSON.parse(JSON.stringify(referenceBannerObj));
+        modifiedBanner.Title = copy.title;
+        modifiedBanner.Subtitle = copy.subtitle;
+        if (!modifiedBanner.CTAs) modifiedBanner.CTAs = [];
+
+        if (format === 'app') {
+            modifiedBanner.AppTitle = copy.title;
+            modifiedBanner.AppSubtitle = copy.subtitle;
+            const appCtaObj = modifiedBanner.CTAs.find(c => c.Key.includes('app'));
+            if (appCtaObj) appCtaObj.Text = copy.cta;
+            else modifiedBanner.CTAs.push({ Key: 'app', Text: copy.cta });
+            modifiedBanner._forceAppImage = imageB64;
+        } else {
+            const webCtaObj = modifiedBanner.CTAs.find(c => !c.Key.includes('app'));
+            if (webCtaObj) webCtaObj.Text = copy.cta;
+            else modifiedBanner.CTAs.push({ Key: 'web', Text: copy.cta });
+            modifiedBanner._forceHeroImage = imageB64;
+        }
+
+        renderEmulator([modifiedBanner], [modifiedBanner], 1, DOM.creatorCanvas, true);
     }
 
     function renderEmulator(results, toRender, max, targetDOM = DOM.emulatorGrid, isCreatorMode = false) {
