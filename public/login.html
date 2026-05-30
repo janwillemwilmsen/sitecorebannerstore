@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in &middot; SBS Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center bg-slate-100 text-slate-800 px-4">
+    <div class="w-full max-w-sm">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 11c0-1.105.895-2 2-2s2 .895 2 2M5 11h14a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2zm7-7a4 4 0 00-4 4v3h8V8a4 4 0 00-4-4z">
+                        </path>
+                    </svg>
+                </div>
+                <h1 class="text-xl font-bold text-slate-900">Essent SBS Portal</h1>
+                <p class="text-sm text-slate-500 mt-1">Enter the passphrase to continue.</p>
+            </div>
+
+            <form id="loginForm" class="flex flex-col gap-4">
+                <div>
+                    <label for="passphrase" class="block text-sm font-medium text-slate-700 mb-1">Passphrase</label>
+                    <input type="password" id="passphrase" name="passphrase" autocomplete="current-password" autofocus
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition"
+                        placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
+                </div>
+
+                <div id="errorMessage"
+                    class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+
+                <button type="submit" id="submitBtn"
+                    class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg shadow-sm transition-colors">
+                    Unlock
+                </button>
+            </form>
+        </div>
+        <p class="text-center text-xs text-slate-400 mt-4">Authorized access only.</p>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const input = document.getElementById('passphrase');
+        const errorBox = document.getElementById('errorMessage');
+        const submitBtn = document.getElementById('submitBtn');
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.classList.remove('hidden');
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.classList.add('hidden');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Checking...';
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ passphrase: input.value })
+                });
+                if (res.ok) {
+                    window.location.href = '/';
+                    return;
+                }
+                const data = await res.json().catch(() => ({}));
+                showError(data.error || 'Login failed. Please try again.');
+            } catch (err) {
+                showError('Network error. Please try again.');
+            }
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Unlock';
+            input.value = '';
+            input.focus();
+        });
+    </script>
+</body>
+
+</html>

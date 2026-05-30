@@ -13,3 +13,4 @@ uploads
 unpacked
 data
 *.zip
+.env

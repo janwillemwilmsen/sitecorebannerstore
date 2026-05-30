@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Escape user/XML-derived values before inserting into innerHTML to prevent stored XSS.
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+
     // State
     const state = {
         search: '',
@@ -71,10 +76,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         fetch(`/api/banners/${archiveId}`)
             .then(res => {
+                if (res.status === 401) { window.location.href = '/login'; return null; }
                 if (!res.ok) throw new Error('Failed to load data');
                 return res.json();
             })
             .then(data => {
+                if (!data) return;
                 state.data = data;
                 DOM.loading.classList.add('hidden');
                 setupFilters();
@@ -153,16 +160,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderLanguageFilters(langs) {
-        let html = `<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lang" value="all" checked onchange="window.setLang('all');" class="text-indigo-600 focus:ring-indigo-500"> <span class="text-sm">All</span></label>`;
+        let html = `<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lang" value="all" checked class="text-indigo-600 focus:ring-indigo-500"> <span class="text-sm">All</span></label>`;
         langs.forEach(l => {
-            html += `<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lang" value="${l}" onchange="window.setLang('${l}');" class="text-indigo-600 focus:ring-indigo-500"> <span class="text-sm">${l}</span></label>`;
+            html += `<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lang" value="${esc(l)}" class="text-indigo-600 focus:ring-indigo-500"> <span class="text-sm">${esc(l)}</span></label>`;
         });
         DOM.languages.innerHTML = html;
-    }
-
-    window.setLang = function (l) {
-        state.language = l;
-        render();
+        DOM.languages.addEventListener('change', (e) => {
+            if (e.target.name === 'lang') { state.language = e.target.value; render(); }
+        });
     }
 
     function renderBaseFolderFilters(folders) {
@@ -170,11 +175,14 @@ document.addEventListener('DOMContentLoaded', () => {
         folders.forEach(f => {
             html += `
             <label class="flex items-center gap-2 cursor-pointer mb-1 hover:bg-slate-50 p-1 rounded transition-colors text-sm">
-                <input type="checkbox" data-type="base" value="${f}" onchange="window.toggleBaseFolder('${f}')" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                <span class="truncate" title="${f}">${f}</span>
+                <input type="checkbox" data-type="base" value="${esc(f)}" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                <span class="truncate" title="${esc(f)}">${esc(f)}</span>
             </label>`;
         });
         DOM.baseFolders.innerHTML = html;
+        DOM.baseFolders.addEventListener('change', (e) => {
+            if (e.target.dataset.type === 'base') window.toggleBaseFolder(e.target.value);
+        });
     }
 
     function updateSubFolderFilters() {
@@ -187,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = `<option value="">All Subfolders</option>`;
         subs.forEach(s => {
             const selected = s === state.subFolder ? 'selected' : '';
-            html += `<option value="${s}" ${selected}>${s}</option>`;
+            html += `<option value="${esc(s)}" ${selected}>${esc(s)}</option>`;
         });
         DOM.subFolder.innerHTML = html;
     }
@@ -260,18 +268,18 @@ document.addEventListener('DOMContentLoaded', () => {
             card.innerHTML = `
              <div class="p-4 flex flex-col flex-1">
                 <div class="flex justify-between items-start mb-2 gap-2">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-800 border border-slate-200 truncate" title="${b.BaseFolder} / ${b.SubFolder}">
-                        ${b.BaseFolder}${b.SubFolder ? ' / ' + b.SubFolder : ''}                        
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-800 border border-slate-200 truncate" title="${esc(b.BaseFolder)} / ${esc(b.SubFolder)}">
+                        ${esc(b.BaseFolder)}${b.SubFolder ? ' / ' + esc(b.SubFolder) : ''}
                     </span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] whitespace-nowrap font-bold ${typeColor} uppercase tracking-wider">${b.Language}</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] whitespace-nowrap font-bold ${typeColor} uppercase tracking-wider">${esc(b.Language)}</span>
                 </div>
-                <h3 class="text-sm font-semibold text-slate-900 line-clamp-2 min-h-10 leading-tight mb-2" title="${b.Name}">${b.Name}</h3>
+                <h3 class="text-sm font-semibold text-slate-900 line-clamp-2 min-h-10 leading-tight mb-2" title="${esc(b.Name)}">${esc(b.Name)}</h3>
                 
                 ${imageBlock}
                 
                 <div class="mt-3">
-                    ${b.Title ? `<p class="text-sm text-slate-600 mb-1 font-medium line-clamp-2" title="${b.Title}">${b.Title}</p>` : '<p class="text-sm text-slate-400 italic mb-1">No title</p>'}
-                    ${b.Subtitle ? `<p class="text-[11px] text-slate-500 mb-3 line-clamp-2" title="${b.Subtitle}">${b.Subtitle}</p>` : ''}
+                    ${b.Title ? `<p class="text-sm text-slate-600 mb-1 font-medium line-clamp-2" title="${esc(b.Title)}">${esc(b.Title)}</p>` : '<p class="text-sm text-slate-400 italic mb-1">No title</p>'}
+                    ${b.Subtitle ? `<p class="text-[11px] text-slate-500 mb-3 line-clamp-2" title="${esc(b.Subtitle)}">${esc(b.Subtitle)}</p>` : ''}
                 </div>
 
                 <div class="mb-3 flex flex-col gap-1.5">
@@ -279,8 +287,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const mainCtas = b.CTAs ? b.CTAs.filter(c => !c.Key.includes('app')) : [];
                     return mainCtas.length > 0 ? mainCtas.map(cta => `
                             <div class="bg-indigo-50 rounded p-1.5 flex flex-col border border-indigo-100">
-                                <span class="text-[11px] font-medium text-slate-800 truncate" title="${cta.Text || ''}">${cta.Text || 'No Link Text'}</span>
-                                <span class="text-[9px] text-indigo-600 truncate opacity-90 mt-0.5" title="${cta.Url || ''}">${cta.Url || 'No Target URL'}</span>
+                                <span class="text-[11px] font-medium text-slate-800 truncate" title="${esc(cta.Text || '')}">${esc(cta.Text || 'No Link Text')}</span>
+                                <span class="text-[9px] text-indigo-600 truncate opacity-90 mt-0.5" title="${esc(cta.Url || '')}">${esc(cta.Url || 'No Target URL')}</span>
                             </div>
                         `).join('') : '<span class="text-[11px] font-medium text-slate-400 italic">No call-to-action</span>';
                 })()}
@@ -308,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                                
                             </div>
-                            ${b.AppImageAlt ? `<div class="mt-1 text-[10px] text-slate-500 px-1"><span class="font-medium text-slate-600">Alt text:</span> <span class="italic">${b.AppImageAlt}</span></div>` : ''}
+                            ${b.AppImageAlt ? `<div class="mt-1 text-[10px] text-slate-500 px-1"><span class="font-medium text-slate-600">Alt text:</span> <span class="italic">${esc(b.AppImageAlt)}</span></div>` : ''}
                         `;
                     }
 
@@ -316,19 +324,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         <hr class="border-slate-100 my-3">
                         <div class="flex flex-col gap-1.5">
                             <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">App Version</span>
-                            ${b.AppTitle ? `<h4 class="text-sm font-semibold text-slate-800 leading-tight truncate" title="${b.AppTitle}">${b.AppTitle}</h4>` : ''}
-                            ${b.AppSubtitle ? `<p class="text-[11px] text-slate-500 line-clamp-2" title="${b.AppSubtitle}">${b.AppSubtitle}</p>` : ''}
+                            ${b.AppTitle ? `<h4 class="text-sm font-semibold text-slate-800 leading-tight truncate" title="${esc(b.AppTitle)}">${esc(b.AppTitle)}</h4>` : ''}
+                            ${b.AppSubtitle ? `<p class="text-[11px] text-slate-500 line-clamp-2" title="${esc(b.AppSubtitle)}">${esc(b.AppSubtitle)}</p>` : ''}
                             ${appImageBlock}
                             ${appCtas.length > 0 ? `
                             <div class="mt-2 flex flex-col gap-1.5">
                                 ${appCtas.map(cta => `
                                     <div class="bg-teal-50 rounded p-1.5 flex flex-col border border-teal-100">
                                         <div class="flex justify-between items-center mb-0.5">
-                                            <span class="text-[9px] font-bold text-teal-800 uppercase tracking-widest leading-none">${cta.Key.replace('action', ' action')}</span>
-                                            <span class="text-[8px] text-teal-700 bg-white px-1 py-0.5 rounded shadow-sm border border-teal-100 leading-none">${cta.Type || 'No link type'}</span>
+                                            <span class="text-[9px] font-bold text-teal-800 uppercase tracking-widest leading-none">${esc(cta.Key.replace('action', ' action'))}</span>
+                                            <span class="text-[8px] text-teal-700 bg-white px-1 py-0.5 rounded shadow-sm border border-teal-100 leading-none">${esc(cta.Type || 'No link type')}</span>
                                         </div>
-                                        <span class="text-[11px] font-medium text-slate-800 truncate" title="${cta.Text || ''}">${cta.Text || 'No Link Text'}</span>
-                                        <span class="text-[9px] text-teal-700 truncate opacity-90 mt-0.5" title="${cta.Url || ''}">${cta.Url || 'No Target URL'}</span>
+                                        <span class="text-[11px] font-medium text-slate-800 truncate" title="${esc(cta.Text || '')}">${esc(cta.Text || 'No Link Text')}</span>
+                                        <span class="text-[9px] text-teal-700 truncate opacity-90 mt-0.5" title="${esc(cta.Url || '')}">${esc(cta.Url || 'No Target URL')}</span>
                                     </div>
                                 `).join('')}
                             </div>
@@ -338,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 })()}
 
                 <div class="mt-auto pt-3 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-2 text-[10px] text-slate-500">
-                    ${b.CampaignId ? `<div><span class="font-medium text-slate-700">Camp:</span> ${b.CampaignId}</div>` : ''}
+                    ${b.CampaignId ? `<div><span class="font-medium text-slate-700">Camp:</span> ${esc(b.CampaignId)}</div>` : ''}
                     <div><span class="font-medium text-slate-700">Updated:</span> ${formatDate(b.Updated)}</div>
                 </div>
             </div>
@@ -461,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const match = state.data.find(b => b.Name.toLowerCase() === term);
 
         if (!match) {
-            DOM.creatorTopPreview.innerHTML = `<div class="p-8 text-slate-500 font-medium w-full text-center">No banner found exactly matching name "${DOM.creatorSearchInput.value}"</div>`;
+            DOM.creatorTopPreview.innerHTML = `<div class="p-8 text-slate-500 font-medium w-full text-center">No banner found exactly matching name "${esc(DOM.creatorSearchInput.value)}"</div>`;
             DOM.creatorWorkflow.classList.remove('hidden');
             return;
         }
@@ -626,10 +634,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${images[i] ? `<img src="${images[i]}" class="w-full h-full object-cover">` : '<span class="text-slate-400 text-xs">No Image Available</span>'}
                 </div>
                 <div class="flex-1 flex flex-col">
-                    <h4 class="font-black text-sm text-slate-800 mb-1 leading-tight">${copies[i]?.title || '...'}</h4>
-                    <p class="text-xs text-slate-500 mb-3 font-semibold">${copies[i]?.subtitle || '...'}</p>
+                    <h4 class="font-black text-sm text-slate-800 mb-1 leading-tight">${esc(copies[i]?.title || '...')}</h4>
+                    <p class="text-xs text-slate-500 mb-3 font-semibold">${esc(copies[i]?.subtitle || '...')}</p>
                     <div class="mt-auto pt-2 border-t border-slate-100">
-                      <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 font-bold text-[10px] px-2 py-1 rounded-full uppercase tracking-wider">CTA: ${copies[i]?.cta || '...'}</span>
+                      <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 font-bold text-[10px] px-2 py-1 rounded-full uppercase tracking-wider">CTA: ${esc(copies[i]?.cta || '...')}</span>
                     </div>
                 </div>
                 <button class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded mt-2 transition-colors focus:ring-2 select-variant-btn" data-idx="${i}">Compile into Canvas &rarr;</button>
@@ -694,8 +702,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const primaryCta = b.CTAs ? b.CTAs.find(c => !c.Key.includes('app')) : null;
             const primaryAppCta = b.CTAs ? b.CTAs.find(c => c.Key.includes('app')) : null;
 
-            const ctaText = primaryCta && primaryCta.Text ? primaryCta.Text : 'No text in CTA';
-            const appCtaText = primaryAppCta && primaryAppCta.Text ? primaryAppCta.Text : 'No text in CTA';
+            const ctaText = esc(primaryCta && primaryCta.Text ? primaryCta.Text : 'No text in CTA');
+            const appCtaText = esc(primaryAppCta && primaryAppCta.Text ? primaryAppCta.Text : 'No text in CTA');
 
             const webImg = getImgUrl(b.HeroImage);
             const appImg = getImgUrl(b.AppImage);
@@ -732,12 +740,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="flex w-full">
                             <div class="w-5/12 ${!isEssent ? 'bg-[#31006E] rounded-r-full pr-12 py-6 -ml-8 pl-8' : ''}">
                                 <div class="inline-flex flex-col">
-                                    <span class="text-2xl font-black text-white uppercase leading-tight tracking-tight mb-2" contenteditable="true">${b.Title || b.Name}</span>
-                                    ${b.Subtitle ? `<span contenteditable="true" class="text-[13px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} ">${b.Subtitle}</span>` : ''}
+                                    <span class="text-2xl font-black text-white uppercase leading-tight tracking-tight mb-2" contenteditable="true">${esc(b.Title || b.Name)}</span>
+                                    ${b.Subtitle ? `<span contenteditable="true" class="text-[13px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} ">${esc(b.Subtitle)}</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-4 mt-5">
                                     <button class="${colors.webCtaText} ${colors.ctaBorder} flex-shrink-0 font-bold text-xs px-5 py-2.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center gap-2" contenteditable="true" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
-                                    ${b.DismissBannerLabel ? `<a href="#" class="text-white text-[11px] underline opacity-80 hover:opacity-100 whitespace-nowrap">${b.DismissBannerLabel}</a>` : ''}
+                                    ${b.DismissBannerLabel ? `<a href="#" class="text-white text-[11px] underline opacity-80 hover:opacity-100 whitespace-nowrap">${esc(b.DismissBannerLabel)}</a>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -751,20 +759,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     <div class="flex flex-col w-full z-10 ${!isEssent ? 'bg-[#31006E] rounded-r-full p-8 -ml-2 pl-10' : 'p-8 h-full'}">
                         <div class="inline-flex flex-col">
-                            <span class="text-xl font-black text-white uppercase leading-tight tracking-tight mb-2" contenteditable="true">${b.Title || b.Name}</span>
-                            ${b.Subtitle ? `<span contenteditable="true" class="text-[12px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} leading-snug">${b.Subtitle}</span>` : ''}
+                            <span class="text-xl font-black text-white uppercase leading-tight tracking-tight mb-2" contenteditable="true">${esc(b.Title || b.Name)}</span>
+                            ${b.Subtitle ? `<span contenteditable="true" class="text-[12px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} leading-snug">${esc(b.Subtitle)}</span>` : ''}
                         </div>
                         
                         <div class="${!isEssent ? 'mt-8' : 'mt-auto pt-6'} flex flex-col items-center w-full">
                             <button class="${colors.webCtaText} ${colors.ctaBorder} w-full font-bold text-xs py-3.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2" contenteditable="true" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
-                            ${b.DismissBannerLabel ? `<a href="#" class="text-white text-sm underline opacity-90 mx-auto mt-4">${b.DismissBannerLabel}</a>` : ''}
+                            ${b.DismissBannerLabel ? `<a href="#" class="text-white text-sm underline opacity-90 mx-auto mt-4">${esc(b.DismissBannerLabel)}</a>` : ''}
                         </div>
                     </div>
                 </div>
             `;
 
-            const appRenderTitle = b.AppTitle || b.Title || b.Name;
-            const appRenderSub = b.AppSubtitle || b.Subtitle || '';
+            const appRenderTitle = esc(b.AppTitle || b.Title || b.Name);
+            const appRenderSub = esc(b.AppSubtitle || b.Subtitle || '');
 
             const appHTML = hasApp ? `
                 <div class="rounded-3xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] w-[320px] shrink-0 mx-auto flex flex-col bg-white border border-slate-100 overflow-hidden relative pb-8 relative group">
@@ -785,7 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                <span>${appCtaText}</span> ${!isEssent ? '' : ''}
                                <svg class="w-5 h-5 mb-[2px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                            </button>
-                           ${b.DismissBannerLabel ? `<a href="#" class="${isEssent ? 'text-[#1A66FF]' : 'text-[#1E76CE]'} text-sm font-medium underline mx-auto mt-4" contenteditable="true">${b.DismissBannerLabel}</a>` : ''}
+                           ${b.DismissBannerLabel ? `<a href="#" class="${isEssent ? 'text-[#1A66FF]' : 'text-[#1E76CE]'} text-sm font-medium underline mx-auto mt-4" contenteditable="true">${esc(b.DismissBannerLabel)}</a>` : ''}
                        </div>
                     </div>
                 </div>
@@ -803,8 +811,8 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.innerHTML = `
                 <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
                     <div class="flex flex-col">
-                        <span class="text-sm font-bold text-slate-800 uppercase tracking-widest">${b.BaseFolder}${b.SubFolder ? ' / ' + b.SubFolder : ''}</span>
-                        <span class="text-xs text-slate-500 font-medium">${b.Name} | ${b.Language}</span>
+                        <span class="text-sm font-bold text-slate-800 uppercase tracking-widest">${esc(b.BaseFolder)}${b.SubFolder ? ' / ' + esc(b.SubFolder) : ''}</span>
+                        <span class="text-xs text-slate-500 font-medium">${esc(b.Name)} | ${esc(b.Language)}</span>
                         <button class="text-xs font-semibold px-2 py-1 bg-slate-200 text-slate-700 rounded" onclick="printScreenshot('${wrapper.id}')">Print screenshot</button>
                     </div>
                     <span class="text-xs font-semibold px-2 py-1 bg-slate-200 text-slate-700 rounded">${idx + 1} / ${toRender.length}</span>

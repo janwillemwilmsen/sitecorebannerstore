@@ -3,3 +3,4 @@
 /uploads
 /unpacked
 /node_modules
+.env

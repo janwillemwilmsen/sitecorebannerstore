@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorAlert = document.getElementById('errorAlert');
     const errorMessage = document.getElementById('errorMessage');
 
+    // Escape server/upload-derived values before inserting into innerHTML to prevent stored XSS.
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+
     let pollInterval = null;
 
     // Fetch archives on load
@@ -98,6 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     progressContainer.classList.add('hidden');
                 }, 5000);
+            } else if (xhr.status === 401) {
+                window.location.href = '/login';
             } else {
                 showError('Upload failed: ' + xhr.responseText);
                 progressContainer.classList.add('hidden');
@@ -123,8 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function fetchArchives() {
         fetch('/api/archives')
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) { window.location.href = '/login'; return null; }
+                return res.json();
+            })
             .then(data => {
+                if (!data) return;
                 renderArchives(data);
                 
                 // Check if any currently processing
@@ -172,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 animate-pulse">Processing...</span>`;
                 actionHtml = `<button disabled class="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-400 bg-slate-50 cursor-not-allowed">Processing...</button>`;
             } else {
-                statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800" title="${arch.error}">Error</span>`;
+                statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800" title="${esc(arch.error)}">Error</span>`;
                 actionHtml = `<button disabled class="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-400 bg-slate-50 cursor-not-allowed">Failed</button>`;
             }
 
@@ -180,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between hover:shadow-md transition-shadow">
                 <div class="flex-1">
                     <div class="flex items-center gap-3 mb-1">
-                        <h3 class="text-base font-bold text-slate-900 truncate" title="${arch.originalName}">${arch.originalName}</h3>
+                        <h3 class="text-base font-bold text-slate-900 truncate" title="${esc(arch.originalName)}">${esc(arch.originalName)}</h3>
                         ${statusBadge}
                     </div>
                     <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
@@ -188,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="flex items-center gap-1"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg> ${size}</span>
                         ${arch.bannerCount !== undefined ? `<span class="flex items-center gap-1 font-medium text-slate-700 bg-slate-100 px-1.5 rounded"><svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg> ${arch.bannerCount} banners</span>` : ''}
                     </div>
-                    ${arch.error ? `<div class="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100">${arch.error}</div>` : ''}
+                    ${arch.error ? `<div class="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100">${esc(arch.error)}</div>` : ''}
                 </div>
                 <div class="flex items-center gap-3 mt-4 sm:mt-0 w-full sm:w-auto">
                     ${actionHtml}
