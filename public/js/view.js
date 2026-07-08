@@ -181,24 +181,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function resetFilters() {
         state.search = '';
-        state.language = 'all';
+        state.language = defaultLanguage;
         state.baseFolders.clear();
         state.subFolder = '';
         state.campaignMode = 'off';
 
         DOM.campaignListSelect.value = 'off';
         DOM.search.value = '';
-        document.querySelectorAll('input[name="lang"]').forEach(el => el.checked = (el.value === 'all'));
+        document.querySelectorAll('input[name="lang"]').forEach(el => el.checked = (el.value === defaultLanguage));
         document.querySelectorAll('input[type="checkbox"][data-type="base"]').forEach(el => el.checked = false);
 
         updateSubFolderFilters();
         render();
     }
 
+    // Default language: nl-NL when the archive contains it, otherwise All.
+    let defaultLanguage = 'all';
+
     function renderLanguageFilters(langs) {
-        let html = `<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lang" value="all" checked class="text-indigo-600 focus:ring-indigo-500"> <span class="text-sm">All</span></label>`;
+        defaultLanguage = langs.includes('nl-NL') ? 'nl-NL' : 'all';
+        state.language = defaultLanguage;
+
+        let html = `<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lang" value="all" ${defaultLanguage === 'all' ? 'checked' : ''} class="text-indigo-600 focus:ring-indigo-500"> <span class="text-sm">All</span></label>`;
         langs.forEach(l => {
-            html += `<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lang" value="${esc(l)}" class="text-indigo-600 focus:ring-indigo-500"> <span class="text-sm">${esc(l)}</span></label>`;
+            html += `<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lang" value="${esc(l)}" ${l === defaultLanguage ? 'checked' : ''} class="text-indigo-600 focus:ring-indigo-500"> <span class="text-sm">${esc(l)}</span></label>`;
         });
         DOM.languages.innerHTML = html;
         DOM.languages.addEventListener('change', (e) => {
