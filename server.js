@@ -238,6 +238,62 @@ app.delete('/api/archives/:id', async (req, res) => {
     res.json({ success: true });
 });
 
+// --- Campaign filter list ----------------------------------------------------
+// A single global CSV of CampaignIDs (one column). It applies across all
+// uploaded archives: the viewer uses it to show only (or hide) banners whose
+// CampaignId is in the list. Uploading replaces the previous list; it can be
+// deleted to turn the feature off entirely.
+const campaignFilterPath = path.join(DATA_DIR, 'campaign-filter.json');
+
+// CSVs are tiny (a list of IDs), so keep them in memory instead of on disk.
+const csvUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5 MB is plenty for an ID list
+});
+
+function parseCampaignCsv(text) {
+    const ids = new Set();
+    const lines = text.replace(/^﻿/, '').split(/\r?\n/);
+    for (const line of lines) {
+        // Only the first column matters; tolerate comma or semicolon delimiters.
+        let value = line.split(/[,;]/)[0].trim();
+        if (value.startsWith('"') && value.endsWith('"')) {
+            value = value.slice(1, -1).replace(/""/g, '"').trim();
+        }
+        if (!value) continue;
+        if (/^campaign\s*id$/i.test(value)) continue; // header row
+        ids.add(value);
+    }
+    return [...ids];
+}
+
+app.get('/api/campaign-filter', async (req, res) => {
+    if (!(await fs.pathExists(campaignFilterPath))) return res.json(null);
+    const filter = await fs.readJson(campaignFilterPath).catch(() => null);
+    res.json(filter);
+});
+
+app.post('/api/campaign-filter', csvUpload.single('csvfile'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const ids = parseCampaignCsv(req.file.buffer.toString('utf8'));
+    if (ids.length === 0) {
+        return res.status(400).json({ error: 'No CampaignIDs found in the CSV. Expected one CampaignID per line.' });
+    }
+    const filter = {
+        originalName: req.file.originalname,
+        uploadedAt: new Date().toISOString(),
+        count: ids.length,
+        ids
+    };
+    await fs.writeJson(campaignFilterPath, filter, { spaces: 2 });
+    res.json({ success: true, count: ids.length });
+});
+
+app.delete('/api/campaign-filter', async (req, res) => {
+    await fs.remove(campaignFilterPath).catch(() => {});
+    res.json({ success: true });
+});
+
 app.get('/api/banners/:id', async (req, res) => {
     const id = req.params.id;
     if (!isValidId(id)) return res.status(400).json({ error: 'Invalid archive id' });
@@ -247,6 +303,68 @@ app.get('/api/banners/:id', async (req, res) => {
     } else {
         res.status(404).json({ error: 'Data not found' });
     }
+});
+
+// --- CSV export -------------------------------------------------------------
+// One row per banner. Multiple CTAs per banner are joined with " | " so each
+// archive still maps to a single, spreadsheet-friendly row.
+const CSV_COLUMNS = [
+    'Id', 'Name', 'Language', 'Category', 'Subcategory', 'Path',
+    'Title', 'Subtitle', 'CampaignId', 'Created', 'Updated',
+    'HeroImageUrl', 'AppTitle', 'AppSubtitle', 'AppImageUrl', 'AppImageAlt',
+    'DismissBannerLabel',
+    'MainCtaTexts', 'MainCtaUrls', 'MainCtaTypes',
+    'AppCtaTexts', 'AppCtaUrls', 'AppCtaTypes'
+];
+
+function csvEscape(value) {
+    if (value === null || value === undefined) return '';
+    const s = String(value);
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function safeFilename(name) {
+    return String(name || 'banners').replace(/[^A-Za-z0-9._ -]/g, '_').slice(0, 100) || 'banners';
+}
+
+function bannersToCsv(banners, mediaPrefix) {
+    const fullImg = (img) => (img ? mediaPrefix + img : '');
+    const join = (arr, field) => arr.map((c) => c[field] || '').join(' | ');
+
+    const rows = banners.map((b) => {
+        const ctas = Array.isArray(b.CTAs) ? b.CTAs : [];
+        const main = ctas.filter((c) => !((c.Key || '').includes('app')));
+        const app = ctas.filter((c) => (c.Key || '').includes('app'));
+        return [
+            b.Id, b.Name, b.Language, b.BaseFolder, b.SubFolder, b.Path,
+            b.Title, b.Subtitle, b.CampaignId, b.Created, b.Updated,
+            fullImg(b.HeroImage), b.AppTitle, b.AppSubtitle, fullImg(b.AppImage), b.AppImageAlt,
+            b.DismissBannerLabel,
+            join(main, 'Text'), join(main, 'Url'), join(main, 'Type'),
+            join(app, 'Text'), join(app, 'Url'), join(app, 'Type')
+        ].map(csvEscape).join(',');
+    });
+    return [CSV_COLUMNS.join(','), ...rows].join('\r\n');
+}
+
+app.get('/api/banners/:id/csv', async (req, res) => {
+    const id = req.params.id;
+    if (!isValidId(id)) return res.status(400).json({ error: 'Invalid archive id' });
+
+    const dataFilePath = path.join(DATA_DIR, `${id}.json`);
+    if (!(await fs.pathExists(dataFilePath))) return res.status(404).json({ error: 'Data not found' });
+
+    const banners = await fs.readJson(dataFilePath);
+    const archives = await readArchives();
+    const archive = archives.find((a) => a.id === id);
+    const baseName = safeFilename((archive ? archive.originalName : id).replace(/\.zip$/i, ''));
+    const mediaPrefix = (req.query.mediaPrefix && String(req.query.mediaPrefix)) || 'https://www.essent.nl/-/media/';
+
+    const csv = bannersToCsv(banners, mediaPrefix);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${baseName}-banners.csv"`);
+    // UTF-8 BOM so Excel auto-detects the encoding for non-ASCII content.
+    res.send('﻿' + csv);
 });
 
 app.listen(PORT, () => {

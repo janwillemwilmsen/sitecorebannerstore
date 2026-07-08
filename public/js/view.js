@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
         language: 'all',
         baseFolders: new Set(),
         subFolder: '',
+        campaignMode: 'off',      // 'off' | 'include' | 'exclude'
+        campaignIds: null,        // Set of normalized CampaignIDs from the uploaded CSV, or null
         mediaPrefix: 'https://www.essent.nl/-/media/',
         data: [],
         viewMode: 'data',
@@ -27,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
         subFolder: document.getElementById('subFolderSelect'),
         reset: document.getElementById('resetFilters'),
         mediaHost: document.getElementById('mediaHostInput'),
+        campaignListSection: document.getElementById('campaignListSection'),
+        campaignListInfo: document.getElementById('campaignListInfo'),
+        campaignListSelect: document.getElementById('campaignListSelect'),
         loading: document.getElementById('loadingState'),
         locatorGrid: null,
         emulatorGrid: document.getElementById('emulatorGrid'),
@@ -74,15 +79,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         DOM.loading.classList.remove('hidden');
 
-        fetch(`/api/banners/${archiveId}`)
+        // The campaign filter list is optional; failing to load it must not
+        // block the banner data, so its errors resolve to null.
+        const bannersReq = fetch(`/api/banners/${archiveId}`)
             .then(res => {
                 if (res.status === 401) { window.location.href = '/login'; return null; }
                 if (!res.ok) throw new Error('Failed to load data');
                 return res.json();
-            })
-            .then(data => {
+            });
+        const campaignReq = fetch('/api/campaign-filter')
+            .then(res => (res.ok ? res.json() : null))
+            .catch(() => null);
+
+        Promise.all([bannersReq, campaignReq])
+            .then(([data, campaignFilter]) => {
                 if (!data) return;
                 state.data = data;
+                setupCampaignList(campaignFilter);
                 DOM.loading.classList.add('hidden');
                 setupFilters();
             })
@@ -91,6 +104,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Could not load banners data.');
                 DOM.loading.classList.add('hidden');
             });
+    }
+
+    // CampaignIds in the CMS data contain stray whitespace (e.g. "144664 _1"),
+    // so both the CSV values and banner values are compared with all
+    // whitespace stripped, case-insensitively.
+    function normalizeCampaignId(id) {
+        return String(id || '').replace(/\s+/g, '').toLowerCase();
+    }
+
+    function setupCampaignList(filter) {
+        if (!filter || !Array.isArray(filter.ids) || filter.ids.length === 0) return;
+        state.campaignIds = new Set(filter.ids.map(normalizeCampaignId));
+
+        const matchCount = state.data.filter(b => b.CampaignId && state.campaignIds.has(normalizeCampaignId(b.CampaignId))).length;
+        DOM.campaignListInfo.textContent = `${filter.originalName} — ${filter.ids.length} IDs, matching ${matchCount} banners in this archive.`;
+        DOM.campaignListSection.classList.remove('hidden');
+
+        DOM.campaignListSelect.addEventListener('change', (e) => {
+            state.campaignMode = e.target.value;
+            render();
+        });
     }
 
     function setupFilters() {
@@ -150,7 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.language = 'all';
         state.baseFolders.clear();
         state.subFolder = '';
+        state.campaignMode = 'off';
 
+        DOM.campaignListSelect.value = 'off';
         DOM.search.value = '';
         document.querySelectorAll('input[name="lang"]').forEach(el => el.checked = (el.value === 'all'));
         document.querySelectorAll('input[type="checkbox"][data-type="base"]').forEach(el => el.checked = false);
@@ -211,6 +247,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.language !== 'all' && b.Language !== state.language) return false;
             if (state.baseFolders.size > 0 && !state.baseFolders.has(b.BaseFolder)) return false;
             if (state.subFolder && b.SubFolder !== state.subFolder) return false;
+            if (state.campaignMode !== 'off' && state.campaignIds) {
+                // Banners without a CampaignId count as "not in list".
+                const inList = !!b.CampaignId && state.campaignIds.has(normalizeCampaignId(b.CampaignId));
+                if (state.campaignMode === 'include' && !inList) return false;
+                if (state.campaignMode === 'exclude' && inList) return false;
+            }
             return true;
         });
 

@@ -15,10 +15,22 @@ document.addEventListener('DOMContentLoaded', () => {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
 
+    // Campaign filter list elements
+    const cfStatus = document.getElementById('campaignFilterStatus');
+    const cfName = document.getElementById('campaignFilterName');
+    const cfMeta = document.getElementById('campaignFilterMeta');
+    const cfDeleteBtn = document.getElementById('campaignFilterDeleteBtn');
+    const cfUploadBtn = document.getElementById('campaignFilterUploadBtn');
+    const cfUploadLabel = document.getElementById('campaignFilterUploadLabel');
+    const cfInput = document.getElementById('campaignFilterInput');
+    const cfHint = document.getElementById('campaignFilterHint');
+    const cfError = document.getElementById('campaignFilterError');
+
     let pollInterval = null;
 
-    // Fetch archives on load
+    // Fetch archives + campaign filter status on load
     fetchArchives();
+    fetchCampaignFilter();
 
     // Event Listeners for drag and drop
     dropzone.addEventListener('dragover', (e) => {
@@ -178,7 +190,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (arch.status === 'ready') {
                 statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Ready</span>`;
-                actionHtml = `<a href="/view.html?id=${arch.id}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">View Filter Tool</a>`;
+                const csvBtn = `<a href="/api/banners/${arch.id}/csv" title="Download all banners as CSV" class="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M4 6h16M6 6v12a2 2 0 002 2h8a2 2 0 002-2V6"></path></svg>CSV</a>`;
+                const viewBtn = `<a href="/view.html?id=${arch.id}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">View Filter Tool</a>`;
+                actionHtml = csvBtn + viewBtn;
             } else if (arch.status === 'processing') {
                 statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 animate-pulse">Processing...</span>`;
                 actionHtml = `<button disabled class="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-400 bg-slate-50 cursor-not-allowed">Processing...</button>`;
@@ -211,6 +225,80 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
         archivesList.innerHTML = html;
+    }
+
+    // --- Campaign filter list -------------------------------------------------
+    cfUploadBtn.addEventListener('click', () => cfInput.click());
+
+    cfInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            uploadCampaignFilter(e.target.files[0]);
+            cfInput.value = ''; // Reset
+        }
+    });
+
+    cfDeleteBtn.addEventListener('click', () => {
+        if (!confirm('Delete the campaign filter list? The viewer will show all banners again.')) return;
+        fetch('/api/campaign-filter', { method: 'DELETE' })
+            .then(res => res.json())
+            .then(() => renderCampaignFilter(null))
+            .catch(err => showCfError('Could not delete the list: ' + err.message));
+    });
+
+    function showCfError(msg) {
+        cfError.textContent = msg;
+        cfError.classList.remove('hidden');
+    }
+
+    function fetchCampaignFilter() {
+        fetch('/api/campaign-filter')
+            .then(res => {
+                if (res.status === 401) { window.location.href = '/login'; return null; }
+                return res.json();
+            })
+            .then(renderCampaignFilter)
+            .catch(err => console.error('Error fetching campaign filter:', err));
+    }
+
+    function uploadCampaignFilter(file) {
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            showCfError('Only .csv files are allowed.');
+            return;
+        }
+        cfError.classList.add('hidden');
+        cfUploadLabel.textContent = 'Uploading...';
+
+        const formData = new FormData();
+        formData.append('csvfile', file);
+
+        fetch('/api/campaign-filter', { method: 'POST', body: formData })
+            .then(res => {
+                if (res.status === 401) { window.location.href = '/login'; return null; }
+                return res.json().then(data => ({ ok: res.ok, data }));
+            })
+            .then(result => {
+                if (!result) return;
+                if (!result.ok) {
+                    showCfError(result.data.error || 'Upload failed.');
+                    return;
+                }
+                fetchCampaignFilter();
+            })
+            .catch(err => showCfError('Network error during upload: ' + err.message))
+            .finally(() => { cfUploadLabel.textContent = 'Upload CSV'; });
+    }
+
+    function renderCampaignFilter(filter) {
+        if (!filter) {
+            cfStatus.classList.add('hidden');
+            cfHint.textContent = 'No list uploaded yet.';
+            return;
+        }
+        cfStatus.classList.remove('hidden');
+        cfName.textContent = filter.originalName;
+        const date = new Date(filter.uploadedAt).toLocaleString();
+        cfMeta.textContent = ` — ${filter.count} CampaignIDs, uploaded ${date}`;
+        cfHint.textContent = 'Uploading a new CSV replaces the current list.';
     }
 
     window.deleteArchive = function(id) {
