@@ -51,6 +51,9 @@ in — pass it at runtime with `--env-file`.
 | `re-extract.js`               | Re-run extraction over all already-unpacked archives |
 | `public/index.html`, `app.js` | Upload page + archive list                           |
 | `public/view.html`, `view.js` | Filter / emulator / creator UI                       |
+| `public/howto-export.html`, `public/img/` | Step-by-step guide (with screenshots) for exporting the Banners tree as a Sitecore package |
+| `public/css/brand-essent.css` | Essent hero-banner styles for the emulator, transcribed from a capture of mijn.essent.nl (`example-preview-banner/mijn-essent-desktop-mobile-web.html`) |
+| `public/fonts/`               | Baton + Lato webfonts extracted from that capture     |
 
 ## Data directories (gitignored, created at runtime)
 

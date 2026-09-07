@@ -13,7 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
         campaignMode: 'off',      // 'off' | 'include' | 'exclude'
         campaignIds: null,        // Set of normalized CampaignIDs from the uploaded CSV, or null
         mediaPrefix: 'https://www.essent.nl/-/media/',
-        data: [],
+        rawData: [],              // banners as loaded
+        data: [],                 // banners as rendered (template names masked when maskTemplates is on)
+        maskTemplates: false,
+        desktopWidth: 1440,       // viewport width used for the Desktop Web preview
         viewMode: 'data',
         brandStyle: 'essent'
     };
@@ -60,11 +63,23 @@ document.addEventListener('DOMContentLoaded', () => {
         modeCreatorBtn: document.getElementById('modeCreatorBtn'),
         brandToggleContainer: document.getElementById('brandToggleContainer'),
         brandEssentBtn: document.getElementById('brandEssentBtn'),
-        brandEdBtn: document.getElementById('brandEdBtn')
+        brandEdBtn: document.getElementById('brandEdBtn'),
+        templateToggle: document.getElementById('templateToggleBtn'),
+        sidebar: document.getElementById('filterSidebar'),
+        sidebarContent: document.getElementById('sidebarContent'),
+        sidebarTitle: document.getElementById('sidebarTitle'),
+        sidebarToggle: document.getElementById('sidebarToggle'),
+        sidebarToggleIcon: document.getElementById('sidebarToggleIcon')
     };
 
     // Initialize App
     function init() {
+        setupSidebarToggle();
+        setupTemplateToggle();
+        try {
+            const w = parseInt(localStorage.getItem(DESKTOP_WIDTH_KEY), 10);
+            if (DESKTOP_WIDTHS.includes(w)) state.desktopWidth = w;
+        } catch (e) { /* storage unavailable */ }
         const savedKey = localStorage.getItem('gemini_api_key');
         if (savedKey && DOM.geminiApiKey) DOM.geminiApiKey.value = savedKey;
         if (DOM.geminiApiKey) DOM.geminiApiKey.addEventListener('change', (e) => localStorage.setItem('gemini_api_key', e.target.value.trim()));
@@ -94,7 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
         Promise.all([bannersReq, campaignReq])
             .then(([data, campaignFilter]) => {
                 if (!data) return;
-                state.data = data;
+                state.rawData = data;
+                applyTemplateMask();
                 setupCampaignList(campaignFilter);
                 DOM.loading.classList.add('hidden');
                 setupFilters();
@@ -124,6 +140,78 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.campaignListSelect.addEventListener('change', (e) => {
             state.campaignMode = e.target.value;
             render();
+        });
+    }
+
+    // Desktop Web preview width. The live hero banner spans the full viewport
+    // and its background image is cover-cropped, so the visible part of the
+    // image depends on how wide the screen is; the layout itself is the same
+    // for every width >= 1200px (Bootstrap xl).
+    const DESKTOP_WIDTHS = [1200, 1440, 1680, 1920];
+    const DESKTOP_WIDTH_KEY = 'sbs_desktop_width';
+
+    // Template-name masking. Some titles/subtitles contain CMS placeholders
+    // such as "{{ energyAdvice.averageSavingsPerYear }}" that are filled in at
+    // runtime; the toggle swaps every "{{ ... }}" for TEMPLATE_MASK so the
+    // previews are not stretched by the long names. Off = original text.
+    const TEMPLATE_RE = /\{\{[^{}]*\}\}/g;
+    const TEMPLATE_MASK = '{{ *** }}';
+    const TEMPLATE_FIELDS = ['Title', 'Subtitle', 'AppTitle', 'AppSubtitle'];
+    const TEMPLATE_KEY = 'sbs_mask_templates';
+    const maskText = (v) => (typeof v === 'string' ? v.replace(TEMPLATE_RE, TEMPLATE_MASK) : v);
+    function maskBanner(b) {
+        const out = { ...b };
+        for (const f of TEMPLATE_FIELDS) out[f] = maskText(out[f]);
+        if (Array.isArray(out.CTAs)) out.CTAs = out.CTAs.map((c) => ({ ...c, Text: maskText(c.Text) }));
+        return out;
+    }
+    function applyTemplateMask() {
+        state.data = state.maskTemplates ? state.rawData.map(maskBanner) : state.rawData;
+    }
+    function updateTemplateToggleStyle() {
+        const on = state.maskTemplates;
+        DOM.templateToggle.className = on
+            ? 'bg-white text-indigo-700 p-1 rounded-lg shadow-sm ml-2 px-3 py-1.5 text-sm font-mono font-bold transition-all duration-200'
+            : 'bg-indigo-700 p-1 rounded-lg shadow-inner ml-2 px-3 py-1.5 text-sm font-mono font-bold text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200';
+        DOM.templateToggle.setAttribute('aria-pressed', String(on));
+        DOM.templateToggle.title = on
+            ? 'Template names are shown as ' + TEMPLATE_MASK + '. Click to show the original names.'
+            : 'Replace template names such as {{ energyAdvice.averageSavingsPerYear }} with ' + TEMPLATE_MASK;
+    }
+    function setupTemplateToggle() {
+        try { state.maskTemplates = localStorage.getItem(TEMPLATE_KEY) === '1'; } catch (e) { /* storage unavailable */ }
+        updateTemplateToggleStyle();
+        DOM.templateToggle.addEventListener('click', () => {
+            state.maskTemplates = !state.maskTemplates;
+            try { localStorage.setItem(TEMPLATE_KEY, state.maskTemplates ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+            updateTemplateToggleStyle();
+            applyTemplateMask();
+            if (state.rawData.length) render();
+        });
+    }
+
+    // Sidebar fold/unfold. Collapsed, the sidebar shrinks to a slim strip that
+    // only shows the toggle; the choice is remembered per browser.
+    const SIDEBAR_KEY = 'sbs_sidebar_collapsed';
+    function setSidebarCollapsed(collapsed) {
+        DOM.sidebar.classList.toggle('w-80', !collapsed);
+        DOM.sidebar.classList.toggle('p-6', !collapsed);
+        DOM.sidebar.classList.toggle('w-14', collapsed);
+        DOM.sidebar.classList.toggle('p-3', collapsed);
+        DOM.sidebar.classList.toggle('items-center', collapsed);
+        DOM.sidebarContent.classList.toggle('hidden', collapsed);
+        DOM.sidebarTitle.classList.toggle('hidden', collapsed);
+        DOM.sidebarToggleIcon.classList.toggle('rotate-180', collapsed);
+        DOM.sidebarToggle.title = collapsed ? 'Expand filters & settings' : 'Collapse filters & settings';
+        DOM.sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+        try { localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+    }
+    function setupSidebarToggle() {
+        let collapsed = false;
+        try { collapsed = localStorage.getItem(SIDEBAR_KEY) === '1'; } catch (e) { /* storage unavailable */ }
+        setSidebarCollapsed(collapsed);
+        DOM.sidebarToggle.addEventListener('click', () => {
+            setSidebarCollapsed(!DOM.sidebarContent.classList.contains('hidden'));
         });
     }
 
@@ -733,9 +821,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const fragment = document.createDocumentFragment();
         
         if (!isCreatorMode) {
-            const introEmuluator = document.createElement('div')
-            introEmuluator.textContent = 'De banner previews zijn geen exacte weergave van de manier waarop ze op apparaten van klanten getoond worden. De weergave is een indicatie.'
-            targetDOM.prepend(introEmuluator)
+            const intro = document.createElement('div');
+            intro.className = 'flex flex-wrap items-center justify-between gap-4';
+            intro.innerHTML = `
+                <span>De banner previews zijn geen exacte weergave van de manier waarop ze op apparaten van klanten getoond worden. De weergave is een indicatie.</span>
+                <label class="flex items-center gap-2 text-sm font-medium text-slate-600 whitespace-nowrap">Desktop viewport
+                    <select id="desktopWidthSelect" class="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        ${DESKTOP_WIDTHS.map((w) => `<option value="${w}" ${w === state.desktopWidth ? 'selected' : ''}>${w}px</option>`).join('')}
+                    </select>
+                </label>`;
+            intro.querySelector('#desktopWidthSelect').addEventListener('change', (e) => {
+                state.desktopWidth = parseInt(e.target.value, 10);
+                try { localStorage.setItem(DESKTOP_WIDTH_KEY, String(state.desktopWidth)); } catch (err) { /* storage unavailable */ }
+                render();
+            });
+            targetDOM.prepend(intro);
         }
 
         const getImgUrl = (img) => {
@@ -780,44 +880,60 @@ document.addEventListener('DOMContentLoaded', () => {
                 appTitleCol: 'text-white'
             };
 
-            const desktopHTML = `
-                <div class="rounded-xl overflow-hidden shadow-lg mx-auto flex items-center relative py-8 bg-right bg-no-repeat shrink-0" style="width: 800px; background-color: ${colors.mainBg}; ${webImg ? `background-image: url('${webImg}'); background-size: cover;` : ''}">
-                    ${!isEssent ? `<div class="absolute inset-y-0 right-0 w-[55%] pointer-events-none opacity-30 bg-repeat bg-[length:40px_40px]"></div>` : ''}
-                    
-                    <div class="w-full mx-auto px-8 z-10">
-                        <div class="flex w-full">
-                            <div class="w-5/12 ${!isEssent ? 'bg-[#31006E] rounded-r-full pr-12 py-6 -ml-8 pl-8' : ''}">
-                                <div class="inline-flex flex-col">
-                                    <span class="text-2xl font-black text-white uppercase leading-tight tracking-tight mb-2" contenteditable="true">${esc(b.Title || b.Name)}</span>
-                                    ${b.Subtitle ? `<span contenteditable="true" class="text-[13px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} ">${esc(b.Subtitle)}</span>` : ''}
+            // --- Desktop / mobile web (hero banner) ----------------------------
+            // Essent: transcribed from a SingleFile capture of mijn.essent.nl
+            // (see public/css/brand-essent.css). The live banner is responsive,
+            // so it is rendered at the chosen desktop viewport width (>= 1200px,
+            // Bootstrap xl) and at a 390px (xs) viewport width.
+            // energiedirect: transcribed from a capture of mijn.energiedirect.nl
+            // (see public/css/brand-energiedirect.css).
+            const heroBg = webImg ? `background-image: url('${webImg}');` : '';
+            const heroTitle = esc(b.Title || b.Name);
+            const heroSub = b.Subtitle ? esc(b.Subtitle) : '';
+            const heroDismiss = b.DismissBannerLabel ? esc(b.DismissBannerLabel) : '';
+
+            const essentHero = (mode) => `
+                <div class="ess-hero ess-hero--${mode} shadow-lg" style="width: ${mode === 'desktop' ? state.desktopWidth : 390}px; ${heroBg}">
+                    <div class="ess-hero__container">
+                        <div class="ess-hero__row">
+                            <div class="ess-hero__col">
+                                <div class="ess-hero__heading">
+                                    <h2 class="ess-hero__title" contenteditable="true">${heroTitle}</h2>
+                                    ${heroSub ? `<span class="ess-hero__intro" contenteditable="true">${heroSub}</span>` : ''}
                                 </div>
-                                <div class="flex items-center gap-4 mt-5">
-                                    <button class="${colors.webCtaText} ${colors.ctaBorder} flex-shrink-0 font-bold text-xs px-5 py-2.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center gap-2" contenteditable="true" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
-                                    ${b.DismissBannerLabel ? `<a href="#" class="text-white text-[11px] underline opacity-80 hover:opacity-100 whitespace-nowrap">${esc(b.DismissBannerLabel)}</a>` : ''}
+                                <div class="ess-hero__buttons">
+                                    <a href="#" class="ess-hero__btn" contenteditable="true">${ctaText}</a>
+                                    ${heroDismiss ? `<a href="#" class="ess-hero__dismiss" contenteditable="true">${heroDismiss}</a>` : ''}
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
 
-            const mobileHTML = `
-                <div class="rounded-xl overflow-hidden shadow-lg w-[320px] min-h-[340px] shrink-0 mx-auto flex flex-col relative bg-bottom bg-no-repeat ${!isEssent ? `py-4` : ''}" style="background-color: ${colors.mainBg}; ">
-                    ${!isEssent ? `<div class=" py-2"></div>` : ''}
-                    
-                    <div class="flex flex-col w-full z-10 ${!isEssent ? 'bg-[#31006E] rounded-r-full p-8 -ml-2 pl-10' : 'p-8 h-full'}">
-                        <div class="inline-flex flex-col">
-                            <span class="text-xl font-black text-white uppercase leading-tight tracking-tight mb-2" contenteditable="true">${esc(b.Title || b.Name)}</span>
-                            ${b.Subtitle ? `<span contenteditable="true" class="text-[12px] font-bold ${!isEssent ? 'text-[#66BC29] uppercase' : 'text-white'} leading-snug">${esc(b.Subtitle)}</span>` : ''}
-                        </div>
-                        
-                        <div class="${!isEssent ? 'mt-8' : 'mt-auto pt-6'} flex flex-col items-center w-full">
-                            <button class="${colors.webCtaText} ${colors.ctaBorder} w-full font-bold text-xs py-3.5 ${isEssent ? 'rounded-md' : 'rounded-full'} shadow-sm whitespace-nowrap inline-flex items-center justify-center gap-2" contenteditable="true" style="background-color: ${colors.webCtaBg}">${ctaText} ${!isEssent ? '->' : ''}</button>
-                            ${b.DismissBannerLabel ? `<a href="#" class="text-white text-sm underline opacity-90 mx-auto mt-4">${esc(b.DismissBannerLabel)}</a>` : ''}
+            const edHero = (mode) => `
+                <div class="ed-hero ed-hero--${mode} shadow-lg" lang="nl" style="width: ${mode === 'desktop' ? state.desktopWidth : 390}px; ${heroBg}">
+                    <div class="ed-hero__container">
+                        <div class="ed-hero__row">
+                            <div class="ed-hero__col">
+                                <div class="ed-hero__left">
+                                    <div class="ed-hero__brand">
+                                        <h1 class="ed-hero__headings">
+                                            <span class="ed-hero__heading" contenteditable="true">${heroTitle}</span>
+                                            ${heroSub ? `<span class="ed-hero__subheading" contenteditable="true">${heroSub}</span>` : ''}
+                                        </h1>
+                                        <div class="ed-hero__buttons">
+                                            <a href="#" class="ed-hero__btn" contenteditable="true">${ctaText}</a>
+                                            ${heroDismiss ? `<a href="#" class="ed-hero__dismiss" contenteditable="true">${heroDismiss}</a>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
+
+            const desktopHTML = isEssent ? essentHero('desktop') : edHero('desktop');
+            const mobileHTML = isEssent ? essentHero('mobile') : edHero('mobile');
 
             const appRenderTitle = esc(b.AppTitle || b.Title || b.Name);
             const appRenderSub = esc(b.AppSubtitle || b.Subtitle || '');
@@ -852,6 +968,108 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
+            // --- "Mijn omgeving" banner (new layout, Sept 2026) --------------
+            // The banner as it appears in the narrow content column of the
+            // Mijn Essent / Mijn Energiedirect overview page. Rendered inside a
+            // compact mock of that page so the banner can be judged in context.
+            const mijnDismiss = b.DismissBannerLabel
+                ? `<a href="#" class="text-white text-[12px] underline opacity-90 whitespace-nowrap">${esc(b.DismissBannerLabel)}</a>`
+                : '';
+            // Hero assets are full-width banners with the brand background baked
+            // in, so the page uses them as a cover background and the narrow
+            // column crops them. Essent assets keep the subject near the middle
+            // (centered crop); energiedirect assets keep it on the right.
+            const mijnImage = webImg
+                ? `<div class="absolute inset-0 bg-no-repeat bg-cover" style="background-image: url('${webImg}'); background-position: ${isEssent ? 'center' : 'right center'};"></div>`
+                : '';
+            const edDotPattern = "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2244%22 height=%2244%22%3E%3Cpath d=%22M4 4h18a18 18 0 0 1 18 18v18H22A18 18 0 0 1 4 22z%22 fill=%22%23458f1c%22 fill-opacity=%22.6%22/%3E%3C/svg%3E')";
+
+            const mijnBannerHTML = isEssent ? `
+                <div class="relative overflow-hidden text-white" style="background-color: #E6006E; border-radius: 16px 96px 16px 16px; min-height: 240px;">
+                    ${mijnImage}
+                    <div class="relative z-10 p-6 flex flex-col w-[62%] min-h-[240px]">
+                        <span class="text-[26px] font-extrabold leading-[1.1] tracking-tight mb-2" contenteditable="true">${esc(b.Title || b.Name)}</span>
+                        ${b.Subtitle ? `<span class="text-[14px] font-medium leading-snug" contenteditable="true">${esc(b.Subtitle)}</span>` : ''}
+                        <div class="flex items-center gap-4 mt-auto pt-6">
+                            <button class="bg-white text-[#1A66FF] font-bold text-[14px] px-5 py-3 rounded-md shadow-sm whitespace-nowrap" contenteditable="true">${ctaText}</button>
+                            ${mijnDismiss}
+                        </div>
+                    </div>
+                </div>` : `
+                <div class="relative overflow-hidden rounded-2xl" style="background-color: #66BC29; height: 275px;">
+                    ${webImg ? '' : `<div class="absolute inset-y-0 right-0 w-[20%] bg-repeat" style="background-image: ${edDotPattern};"></div>`}
+                    ${mijnImage}
+                    <div class="absolute left-0 top-[40px] bottom-[24px] bg-[#31006E] rounded-r-full" style="right: 4%;"></div>
+                    <div class="relative z-10 pl-4 pr-6 pt-[62px] w-[62%] flex flex-col">
+                        <span class="text-white font-black uppercase text-[24px] leading-[1.05] tracking-tight" contenteditable="true">${esc(b.Title || b.Name)}</span>
+                        ${b.Subtitle ? `<span class="text-[#66BC29] font-black uppercase text-[24px] leading-[1.05] tracking-tight" contenteditable="true">${esc(b.Subtitle)}</span>` : ''}
+                        <div class="flex items-center gap-4 mt-5">
+                            <button class="bg-[#FFC000] text-black font-bold text-[14px] px-5 py-3 rounded-full shadow-sm whitespace-nowrap" contenteditable="true">${ctaText}</button>
+                            ${mijnDismiss}
+                        </div>
+                    </div>
+                </div>`;
+
+            const infoIcon = isEssent
+                ? `<svg class="w-5 h-5 shrink-0 text-[#1A66FF] mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path stroke-linecap="round" d="M12 11v5m0-8h.01"></path></svg>`
+                : `<svg class="w-5 h-5 shrink-0 mt-0.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#1E76CE"></circle><path d="M12 10.5v6m0-9h.01" stroke="#fff" stroke-width="2.2" stroke-linecap="round"></path></svg>`;
+
+            const mijnHTML = isEssent ? `
+                <div class="shrink-0 mx-auto overflow-hidden rounded-xl shadow-lg border border-slate-200 bg-[#F2F2F2] text-slate-800" style="width: 594px;">
+                    <div class="bg-white px-6 h-8 flex items-center justify-between text-[11px]">
+                        <span class="text-[#1A66FF] underline">Naar Essent.nl</span>
+                        <span class="text-slate-700 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-[#66BC29]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"></circle><path stroke-linecap="round" d="M3 20a6 6 0 0112 0M16 13l2 2 4-4"></path></svg>
+                            Mijn Essent &#9662;
+                        </span>
+                    </div>
+                    <div class="bg-white border-b border-slate-800 px-6 py-3">
+                        <span class="text-[#E6006E] font-black italic text-[26px] tracking-tight leading-none">essent</span>
+                    </div>
+                    <div class="px-6 pt-6 pb-6 flex flex-col gap-4" style="width: 594px;"><!-- content column: 594 - 2*24 = 546px -->
+                        <h1 class="text-[#E6006E] font-black uppercase text-[28px] leading-none tracking-tight">Overzicht Mijn Essent</h1>
+                        <p class="text-[13px] text-slate-700">Welkom terug! Waar kunnen we je vandaag mee helpen?</p>
+                        <div class="bg-white rounded-xl border-l-4 border-[#1A66FF] shadow-sm px-4 py-3 flex gap-3 text-[13px] text-slate-700 leading-snug">
+                            ${infoIcon}
+                            <span>Het is erg druk bij onze klantenservice. De wachttijden zijn daardoor iets langer dan je van ons gewend bent.</span>
+                        </div>
+                        ${mijnBannerHTML}
+                        <div class="bg-white rounded-xl shadow-sm p-4">
+                            <h3 class="font-bold text-[15px] text-slate-900 mb-3">Termijnbedrag</h3>
+                            <div class="border border-slate-300 rounded p-4 text-center">
+                                <div class="text-[13px] text-slate-700">Op dit moment</div>
+                                <div class="text-[26px] font-bold text-slate-900 my-2">&euro; 200</div>
+                                <span class="text-[#1A66FF] underline font-bold text-[13px]">Wijzigen</span>
+                            </div>
+                            <p class="text-[11px] italic text-slate-600 text-center mt-3">Je betaaldatum voor dit termijnbedrag is 22 oktober 2026</p>
+                        </div>
+                    </div>
+                </div>` : `
+                <div class="shrink-0 mx-auto overflow-hidden rounded-xl shadow-lg border border-slate-200 bg-[#F1F1F1] text-slate-800" style="width: 594px;">
+                    <div class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
+                        <span class="text-[24px] font-black tracking-tight leading-none"><span class="text-[#31006E]">energie</span><span class="text-[#66BC29]">direct</span></span>
+                        <span class="border-2 border-[#1E76CE] text-[#1E76CE] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20a8 8 0 0116 0z"></path></svg>
+                            Mijn Energiedirect
+                        </span>
+                    </div>
+                    <div class="px-6 pt-6 pb-6 flex flex-col gap-4" style="width: 594px;"><!-- content column: 594 - 2*24 = 546px -->
+                        <h1 class="text-[#66BC29] font-black uppercase text-[32px] leading-none tracking-tight">Overzicht.</h1>
+                        <div class="bg-white rounded-2xl shadow-sm px-4 py-4 flex gap-3 text-[13px] text-slate-700 leading-relaxed">
+                            ${infoIcon}
+                            <span>Het is erg druk bij onze klantenservice. De wachttijden zijn daardoor iets langer dan je van ons gewend bent.</span>
+                        </div>
+                        ${mijnBannerHTML}
+                        <div class="bg-white rounded-2xl shadow-sm p-5">
+                            <h3 class="text-[#31006E] font-black text-[20px] mb-3">Termijnbedrag.</h3>
+                            <div class="bg-[#E8F1FB] border-2 border-[#1E76CE] rounded-lg px-4 py-3 text-[13px] text-slate-800 leading-relaxed flex gap-2">
+                                ${infoIcon}
+                                <div><b class="text-[#31006E]">Vanaf 10 september tellen we je jaarrekening op.</b><br>Je laatste termijnbedrag wordt verwerkt. Hierdoor kun je het bedrag niet meer aanpassen. We verwachten dat je tussen &euro; 126 en &euro; 326 terugkrijgt.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
             const wrapper = document.createElement('div');
             wrapper.id = `screenshot-${idx}-${toRender.length}`;
 
@@ -866,14 +1084,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="text-xs font-semibold px-2 py-1 bg-slate-200 text-slate-700 rounded">${idx + 1} / ${toRender.length}</span>
                 </div>
                 <div class="p-8 w-[100%] overflow-x-auto bg-slate-200/50">
-                    <div class="flex flex-col xl:flex-row gap-8 items-start justify-center min-w-[max-content]">
+                    <div class="flex flex-col gap-8 items-center min-w-[max-content]">
                         <div class="flex flex-col items-center gap-3">
-                            <span class="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded shadow-sm border border-slate-100">Desktop Web</span>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded shadow-sm border border-slate-100">Desktop Web &middot; ${state.desktopWidth}px viewport</span>
                             ${desktopHTML}
                         </div>
-                        <div class="flex gap-8">
+                        <div class="flex gap-8 items-start">
                              <div class="flex flex-col items-center gap-3">
-                                 <span class="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded shadow-sm border border-slate-100">Web Mobile</span>
+                                 <span class="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded shadow-sm border border-slate-100">Web Mobile &middot; 390px viewport</span>
                                  ${mobileHTML}
                              </div>
                              <div class="flex flex-col items-center gap-3">
@@ -881,6 +1099,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                  ${appHTML}
                              </div>
                         </div>
+                    </div>
+                </div>
+                <div class="p-8 w-[100%] overflow-x-auto bg-slate-200/50 border-t border-slate-200">
+                    <div class="flex flex-col items-center gap-3 min-w-[max-content] mx-auto">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded shadow-sm border border-slate-100">Mijn ${isEssent ? 'Essent' : 'Energiedirect'} &middot; nieuwe layout</span>
+                        ${mijnHTML}
                     </div>
                 </div>
             `;

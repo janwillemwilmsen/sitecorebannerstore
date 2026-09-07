@@ -1,0 +1,132 @@
+/*
+ * energiedirect "hero banner" (jumbotron + brand-header) styling for the
+ * emulator, transcribed from a SingleFile capture of mijn.energiedirect.nl
+ * (example-preview-banner/mijn-energiedirect-desktop-mobile.html).
+ *
+ * The live site is responsive; the emulator shows fixed-width previews, so the
+ * breakpoint rules are expressed as modifier classes:
+ *   .ed-hero--desktop  = viewport >= 1200px (xl: 1140px container, col-lg-7)
+ *   .ed-hero--mobile   = viewport <  576px  (xs: fluid container, stacked buttons)
+ *
+ * Design tokens (root font-size 16px):
+ *   display font "Energiedirect Soft", body font "Open Sans"
+ *   --crnt-typography-display-desktop-font-size = 2.8865rem (line-height same)
+ *   green #5fb624, purple #410073, yellow-500 #ffc800, grey-900 #1a1a1a
+ *   --crnt-dimension-border-width-base = .125rem, button radius = full
+ */
+
+@font-face { font-family: 'Energiedirect Soft'; font-style: normal; font-weight: 100 900; src: url('/fonts/energiedirect-soft-400-normal.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Open Sans'; font-style: normal; font-weight: 400; src: url('/fonts/open-sans-400-normal.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Open Sans'; font-style: normal; font-weight: 700; src: url('/fonts/open-sans-700-normal.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Open Sans'; font-style: normal; font-weight: 800; src: url('/fonts/open-sans-800-normal.woff2') format('woff2'); font-display: swap; }
+
+.ed-hero,
+.ed-hero * { box-sizing: border-box; }
+
+/* section.jumbotron (inline: background-size cover, position center) */
+.ed-hero {
+    position: relative;
+    overflow: hidden;                  /* clips the brand-header's -100vw stretch */
+    background-color: #5fb624;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 16px;
+    line-height: 2;                    /* --body-line-height */
+    font-weight: 400;
+    color: #1a1a1a;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* .container / .row / .col-12.col-lg-7 */
+.ed-hero__container { width: 100%; margin: 0 auto; padding: 0 16px; }
+.ed-hero--desktop .ed-hero__container { max-width: 1140px; }
+.ed-hero__row { display: flex; flex-wrap: wrap; margin: 0 -8px; }
+.ed-hero__col { flex: 0 0 auto; width: 100%; padding: 0 8px; }
+.ed-hero--desktop .ed-hero__col { width: 58.33333333%; }      /* col-lg-7 */
+
+/* .jumbotron__left */
+.ed-hero__left { position: relative; padding: 64px 0 32px; }   /* 4rem 0 2rem */
+.ed-hero--desktop .ed-hero__left { padding: 120px 0; }         /* >= 992px: 7.5rem 0 */
+
+/* .brand-header.brand-header--default.brand-header--stretch */
+.ed-hero__brand {
+    display: inline-block;
+    position: relative;
+    min-width: 120px;
+    padding: 36px 32px 28px 0;
+    border-radius: 0 200px 200px 0;
+    background: #410073;
+}
+.ed-hero--mobile .ed-hero__brand { width: 100%; }              /* < 992px */
+.ed-hero--desktop .ed-hero__brand {
+    padding: 68px 60px 60px 0;                                 /* >= 992px */
+    box-shadow: 60px 0 #410073;                                /* extends the pill 60px to the right */
+}
+.ed-hero__brand::before {                                      /* --stretch: run to the left edge */
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100vw;
+    width: 100vw;
+    height: 100%;
+    background: #410073;
+}
+
+/* h1.brand-header__headings */
+.ed-hero__headings {
+    margin: 0;
+    font-family: 'Energiedirect Soft', 'Open Sans', sans-serif;
+    font-weight: 800;
+    font-size: 46.184px;               /* 2.8865rem */
+    line-height: 46.184px;
+    text-transform: uppercase;
+    font-synthesis: none;
+    hyphens: auto;
+    overflow-wrap: break-word;
+}
+.ed-hero__heading    { display: block; color: #fff; }
+.ed-hero__subheading { display: block; color: #5fb624; }
+
+/* .jumbotron-slot.jumbotron-slot__buttons--inline */
+.ed-hero__buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: auto;
+    margin-top: 24px;                  /* .jumbotron-slot:not(:empty) */
+}
+.ed-hero--desktop .ed-hero__buttons { flex-direction: row; align-items: center; }   /* >= 576px */
+
+/* crnt-button-alt[variant=primary][inverted] ::part(container) */
+.ed-hero__btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;                /* (spacing-x3 - 2px) / (spacing-x4 - 2px) */
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-color: #ffc800;
+    color: #1a1a1a;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+/* Dismiss link ("Niet meer tonen") next to / below the CTA. */
+.ed-hero__dismiss {
+    align-self: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1.25;
+    text-decoration: underline;
+    padding: 12px 0;
+    text-align: center;
+}

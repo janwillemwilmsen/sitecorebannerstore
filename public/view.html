@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/css/brand-essent.css" rel="stylesheet">
+    <link href="/css/brand-energiedirect.css" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -23,6 +25,9 @@
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
+
+        /* Keep the top-navigation controls on one line. */
+        header h1, header a, header button, header span, #resultCount { white-space: nowrap; }
     </style>
 </head>
 
@@ -52,6 +57,10 @@
                         class="px-4 py-1.5 text-sm font-semibold rounded-md text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200">Banner
                         Creator</button>
                 </div>
+
+                <button id="templateToggleBtn" type="button" aria-pressed="false"
+                    title="Replace template names such as {{ energyAdvice.averageSavingsPerYear }} with {{ *** }}"
+                    class="bg-indigo-700 p-1 rounded-lg shadow-inner ml-2 px-3 py-1.5 text-sm font-mono font-bold text-indigo-100 hover:text-white hover:bg-indigo-500 transition-all duration-200">{{ }}</button>
 
                 <div id="brandToggleContainer"
                     class="hidden bg-indigo-800 p-1 rounded-lg flex gap-1 items-center shadow-inner ml-2">
@@ -86,9 +95,16 @@
 
     <div class="flex flex-1 overflow-hidden min-h-0">
         <!-- Sidebar Filters -->
-        <aside class="w-80 bg-white shadow-xl overflow-y-auto p-6 z-0 flex flex-col gap-6 relative flex-shrink-0">
+        <aside id="filterSidebar" class="w-80 bg-white shadow-xl overflow-y-auto p-6 z-0 flex flex-col gap-6 relative flex-shrink-0 transition-all duration-200">
+            <div class="flex items-center justify-between gap-2 mb-3">
+                <h3 id="sidebarTitle" class="text-xs uppercase tracking-wider font-semibold text-slate-400">Filters & Settings</h3>
+                <button id="sidebarToggle" type="button" title="Collapse filters" aria-expanded="true" aria-controls="sidebarContent"
+                    class="shrink-0 p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                    <svg id="sidebarToggleIcon" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+                </button>
+            </div>
+            <div id="sidebarContent" class="contents">
             <div>
-                <h3 class="text-xs uppercase tracking-wider font-semibold text-slate-400 mb-3">Filters & Settings</h3>
 
                
 
@@ -144,6 +160,7 @@
                 class="mt-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded transition-colors text-sm">
                 Reset All Filters
             </button>
+            </div>
         </aside>
 
         <!-- Main Content -->

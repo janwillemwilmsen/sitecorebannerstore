@@ -1,0 +1,146 @@
+/*
+ * Essent "hero banner" styling for the emulator, transcribed from a SingleFile
+ * capture of mijn.essent.nl (example-preview-banner/mijn-essent-desktop-mobile-web.html).
+ *
+ * The live site is responsive; the emulator shows fixed-width previews side by
+ * side, so the breakpoint rules are expressed as modifier classes instead:
+ *   .ess-hero--desktop  = viewport >= 1200px (Bootstrap xl: 1140px container, col-xl-4)
+ *   .ess-hero--mobile   = viewport <  576px  (Bootstrap xs: fluid container, full-width button)
+ *
+ * Design tokens (root font-size 16px):
+ *   --crnt-core-font-size-6 = 2.0273rem  --crnt-core-font-size-5 = 1.802rem
+ *   --crnt-dimension-spacing-x2/x3/x4/x6/x12 = .5/.75/1/1.5/3rem
+ *   --crnt-advanced-dimension-spacing-x30 = 7.5rem (min-height = x30 * 2)
+ *   --crnt-core-color-blue-600 = #0047ed   brand pink = #e60167
+ *   --crnt-dimension-border-radius-base = .25rem
+ */
+
+@font-face { font-family: 'Baton'; font-style: normal; font-weight: 100 900; src: url('/fonts/baton-400-normal.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Lato';  font-style: normal; font-weight: 400; src: url('/fonts/lato-400-normal.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Lato';  font-style: normal; font-weight: 700; src: url('/fonts/lato-700-normal.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Lato';  font-style: normal; font-weight: 900; src: url('/fonts/lato-900-normal.woff2') format('woff2'); font-display: swap; }
+
+.ess-hero,
+.ess-hero * { box-sizing: border-box; }
+
+/* .hero-banner */
+.ess-hero {
+    display: flex;
+    align-items: center;
+    min-height: 240px;                 /* calc(7.5rem * 2) */
+    background-color: #e60167;
+    background-repeat: no-repeat;
+    padding: 24px 0;                   /* spacing-x6 0 */
+    font-family: 'Lato', sans-serif;   /* body font */
+    font-size: 16px;
+    line-height: 1.5;
+    font-weight: 400;
+    color: #fff;
+    -webkit-font-smoothing: antialiased;
+}
+.ess-hero--desktop {
+    padding: 48px 0;                   /* >= 992px: spacing-x12 0 */
+    background-size: cover;            /* >= 576px */
+    background-position: center;
+}
+.ess-hero--mobile {
+    /* < 576px: the site sets no background-size, so the image renders at its
+       natural size anchored top-left (only the image's top-left corner shows). */
+    background-size: auto;
+    background-position: 0 0;
+}
+
+/* .container */
+.ess-hero__container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 16px;                   /* gutter-x 2rem * .5 */
+}
+.ess-hero--desktop .ess-hero__container { max-width: 1140px; }
+
+/* .row.hero-banner__row */
+.ess-hero__row {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -8px;                    /* row gutter-x 1rem * -.5 */
+}
+
+/* .col-sm-10.col-md-8.col-lg-6.col-xl-4 */
+.ess-hero__col {
+    flex: 0 0 auto;
+    width: 100%;                       /* xs */
+    padding: 0 8px;
+}
+.ess-hero--desktop .ess-hero__col { width: 33.33333333%; }   /* col-xl-4 */
+
+/* .banner-brand-heading */
+.ess-hero__heading {
+    display: inline-flex;
+    flex-direction: column;
+    color: #fff;
+    text-shadow: 0 0 2px rgba(0, 0, 0, .5);
+}
+/* .banner-brand-heading__title (h2) */
+.ess-hero__title {
+    margin: 0 0 8px;                   /* spacing-x2 */
+    font-family: 'Baton', 'Lato', sans-serif;
+    font-weight: 900;
+    font-size: 28.832px;               /* core-font-size-5 = 1.802rem */
+    line-height: 1;
+    text-transform: uppercase;
+    font-synthesis: none;
+    hyphens: auto;
+    overflow-wrap: break-word;
+}
+.ess-hero--desktop .ess-hero__title { font-size: 32.4368px; }  /* >= 992px: core-font-size-6 = 2.0273rem */
+/* .banner-brand-heading__intro (span, inherits body text) */
+.ess-hero__intro { display: block; }
+
+/* .hero-banner__button-group */
+.ess-hero__buttons {
+    display: flex;
+    flex-direction: column;            /* xs: buttons stretch full width */
+    flex-wrap: wrap;
+    align-items: normal;
+    gap: 8px;                          /* spacing-x2 */
+    margin-top: 24px;                  /* spacing-x6 */
+}
+.ess-hero--desktop .ess-hero__buttons {
+    flex-direction: row;               /* >= 576px */
+    align-items: start;
+}
+
+/* crnt-button-alt[variant=primary][inverted] ::part(container) */
+.ess-hero__btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 15px;                /* (spacing-x3 - border) / (spacing-x4 - border) */
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #0047ed;
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    text-shadow: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+/* Dismiss link ("Niet meer tonen"): shown next to the CTA on desktop and
+   below it on mobile, as a white underlined label. */
+.ess-hero__dismiss {
+    align-self: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1.25;
+    text-decoration: underline;
+    padding: 12px 0;
+    text-align: center;
+}

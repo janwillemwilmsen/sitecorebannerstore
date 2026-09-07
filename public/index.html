@@ -20,10 +20,16 @@
     <header class="bg-indigo-600 text-white shadow-md z-10 relative">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold tracking-tight">Essent SBS Portal</h1>
+            <div class="flex items-center gap-2">
+                <a href="/howto-export.html" class="text-sm font-medium bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    How to export
+                </a>
             <button id="logoutBtn" class="text-sm font-medium bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                 Log out
             </button>
+            </div>
         </div>
     </header>
 
@@ -31,7 +37,8 @@
         <!-- Upload Section -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-10">
             <h2 class="text-lg font-bold text-slate-800 mb-2">Upload Sitecore Media Package</h2>
-            <p class="text-sm text-slate-500 mb-6">Upload a Sitecore ZIP package to extract and analyze banner data.</p>
+            <p class="text-sm text-slate-500 mb-6">Upload a Sitecore ZIP package to extract and analyze banner data.
+                Not sure how to create one? Read the <a href="/howto-export.html" class="text-indigo-600 hover:text-indigo-800 font-medium underline">step-by-step export guide</a>.</p>
             
             <div id="dropzone" class="border-2 border-dashed border-slate-300 rounded-xl p-10 flex flex-col items-center justify-center transition-colors cursor-pointer hover:bg-slate-50 group">
                 <svg class="w-12 h-12 text-indigo-400 group-hover:text-indigo-500 mb-4 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
