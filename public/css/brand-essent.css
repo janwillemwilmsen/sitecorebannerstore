@@ -144,3 +144,21 @@
     padding: 12px 0;
     text-align: center;
 }
+
+/* ------------------------------------------------------------------ */
+/* In-app banner title (see example-preview-banner/essent-app-banner.png) */
+/* Same Baton display face as the hero title, centered on the pink header */
+.ess-app__title {
+    margin: 0;
+    font-family: 'Baton', 'Lato', sans-serif;
+    font-weight: 900;
+    font-size: 26px;                   /* reference is ~29px on a 360px card; scaled to the 320px emulator */
+    line-height: 1.1;
+    text-transform: uppercase;
+    text-align: left;
+    color: #fff;
+    font-synthesis: none;
+    hyphens: auto;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+}

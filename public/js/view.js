@@ -941,9 +941,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const appHTML = hasApp ? `
                 <div class="rounded-3xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] w-[320px] shrink-0 mx-auto flex flex-col bg-white border border-slate-100 overflow-hidden relative pb-8 relative group">
                     
-                    <div class="w-full flex-shrink-0 relative flex flex-col items-center pt-10 px-6 pb-40" style="background-color: ${colors.appHeader}; ${colors.appHeaderStyle}">
-                        ${!isEssent ? `<h2 class="text-2xl font-black ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10 w-full" contenteditable="true">${appRenderTitle}</h2>` : ''}
-                        ${isEssent ? `<h2 class="text-xl font-bold ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10" contenteditable="true">${appRenderTitle}</h2>` : ''}
+                    <div class="w-full flex-shrink-0 relative flex flex-col items-start text-left pt-10 px-6 pb-40" style="background-color: ${colors.appHeader}; ${colors.appHeaderStyle}">
+                        ${!isEssent ? `<h2 class="text-2xl font-black ${colors.appTitleCol} uppercase leading-tight tracking-tight z-10 w-full text-left" contenteditable="true">${appRenderTitle}</h2>` : ''}
+                        ${isEssent ? `<h2 class="ess-app__title z-10 w-full" contenteditable="true">${appRenderTitle}</h2>` : ''}
                     </div>
                     
                     ${appImg ? `<div class="relative w-full flex justify-center -mt-36 z-20 px-8 h-32"><img src="${appImg}" class="object-contain h-full max-w-full drop-shadow-md" onerror="this.style.display='none'" /></div>` : '<div class="h-8"></div>'}
